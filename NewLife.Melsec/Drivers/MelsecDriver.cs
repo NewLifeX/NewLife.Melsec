@@ -27,7 +27,6 @@ namespace NewLife.Melsec.Drivers
         /// </summary>
         private Int32 _nodes;
 
-
         /// <summary>
         /// 从点位中解析地址
         /// </summary>
