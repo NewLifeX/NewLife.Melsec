@@ -1,4 +1,5 @@
-﻿using HslCommunication.Core;
+﻿using System.ComponentModel;
+using HslCommunication.Core;
 using HslCommunication.Profinet.Melsec;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
@@ -11,6 +12,7 @@ namespace NewLife.Melsec.Drivers
     /// 三菱PLC驱动
     /// </summary>
     [Driver("MelsecPLC")]
+    [DisplayName("三菱PLC")]
     public class MelsecDriver : IDriver
     {
         /// <summary>
