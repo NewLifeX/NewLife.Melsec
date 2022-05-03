@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using HslCommunication.Core;
 using HslCommunication.Profinet.Melsec;
+using NewLife.IoT;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
 using NewLife.Log;
@@ -13,19 +14,24 @@ namespace NewLife.Melsec.Drivers
     /// </summary>
     [Driver("MelsecPLC")]
     [DisplayName("三菱PLC")]
-    public class MelsecDriver : IDriver
+    public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
     {
-        /// <summary>
-        /// 数据顺序
-        /// </summary>
-        private readonly DataFormat dataFormat = DataFormat.DCBA;
-
         private MelsecMcNet _plcNet;
 
         /// <summary>
         /// 打开通道数量
         /// </summary>
         private Int32 _nodes;
+
+        /// <summary>
+        /// 创建驱动参数对象，可序列化成Xml/Json作为该协议的参数模板
+        /// </summary>
+        /// <returns></returns>
+        public virtual IDriverParameter CreateParameter() => new MelsecParameter
+        {
+            Address = "127.0.0.1:6000",
+            DataFormat = "CDAB",
+        };
 
         /// <summary>
         /// 从点位中解析地址
@@ -47,21 +53,25 @@ namespace NewLife.Melsec.Drivers
         /// <summary>
         /// 打开通道。一个ModbusTcp设备可能分为多个通道读取，需要共用Tcp连接，以不同节点区分
         /// </summary>
-        /// <param name="channel">通道</param>
+        /// <param name="device">通道</param>
         /// <param name="parameters">参数</param>
         /// <returns></returns>
-        public virtual INode Open(IChannel channel, IDictionary<String, Object> parameters)
+        public virtual INode Open(IDevice device, IDictionary<String, Object> parameters)
         {
-            var address = parameters["Address"] as String;
+            var pm = JsonHelper.Convert<MelsecParameter>(parameters);
+            var address = pm.Address;
             if (address.IsNullOrEmpty()) throw new ArgumentException("参数中未指定地址address");
 
-            var i = address.IndexOf(':');
-            if (i < 0) throw new ArgumentException($"参数中地址address格式错误:{address}");
+            var p = address.IndexOf(':');
+            if (p < 0) throw new ArgumentException($"参数中地址address格式错误:{address}");
 
             var node = new MelsecNode
             {
                 Address = address,
-                Channel = channel,
+
+                Driver = this,
+                Device = device,
+                Parameter = pm,
             };
 
             if (_plcNet == null)
@@ -74,19 +84,23 @@ namespace NewLife.Melsec.Drivers
                         {
                             ConnectTimeOut = 3000,
 
-                            IpAddress = address[..i],
-                            Port = address[(i + 1)..].ToInt(),
+                            IpAddress = address[..p],
+                            Port = address[(p + 1)..].ToInt(),
                         };
-                        _plcNet.ByteTransform.DataFormat = dataFormat;
+
+                        if (!pm.DataFormat.IsNullOrEmpty() && Enum.TryParse(typeof(DataFormat), pm.DataFormat, out var format))
+                        {
+                            _plcNet.ByteTransform.DataFormat = (DataFormat)format;
+                        }
 
                         var connect = _plcNet.ConnectServer();
 
                         if (!connect.IsSuccess) throw new Exception($"连接失败：{connect.Message}");
                     }
-
-                    Interlocked.Increment(ref _nodes);
                 }
             }
+
+            Interlocked.Increment(ref _nodes);
 
             return node;
         }

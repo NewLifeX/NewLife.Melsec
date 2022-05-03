@@ -1,6 +1,4 @@
-﻿using NewLife.IoT.Protocols;
-
-namespace NewLife.IoT.Drivers;
+﻿namespace NewLife.IoT.Drivers;
 
 /// <summary>
 /// 节点
@@ -11,5 +9,11 @@ public class MelsecNode : INode
     public String Address { get; set; }
 
     /// <summary>通道</summary>
-    public IChannel Channel { get; set; }
+    public IDriver Driver { get; set; }
+
+    /// <summary>设备</summary>
+    public IDevice Device { get; set; }
+
+    /// <summary>参数</summary>
+    public IDriverParameter Parameter { get; set; }
 }

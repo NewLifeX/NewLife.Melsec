@@ -1,7 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-using NewLife.Data;
-using NewLife.IoT.Drivers;
-using NewLife.IoT.Thing;
+﻿using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
 using NewLife.IoT.ThingSpecification;
 using NewLife.Melsec.Drivers;
@@ -12,11 +9,11 @@ var address = Console.ReadLine();
 if (address == null || address == "") address = "127.0.0.1:6000";
 
 var driver = new MelsecDriver();
-var pm = new { Address = address };
-var node = driver.Open(new Channel(), pm.ToDictionary());
+var pm = new MelsecParameter { Address = address };
+var node = driver.Open(null, pm);
 
 // 测试打开两个通道
-node = driver.Open(new Channel(), pm.ToDictionary());
+node = driver.Open(null, pm);
 
 Console.WriteLine($"连接成功=>{address}！");
 
@@ -52,13 +49,6 @@ do
 driver.Close(node);
 driver.Close(node);
 
-
-public class Channel : IChannel
-{
-    public IThing Thing { get; set; }
-
-    public ThingSpec Specification { get; set; }
-}
 
 public class Point : IPoint
 {
