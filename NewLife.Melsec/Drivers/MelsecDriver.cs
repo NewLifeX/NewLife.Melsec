@@ -45,7 +45,7 @@ namespace NewLife.Melsec.Drivers
             // 去掉冒号后面的位域
             var addr = point.Address;
             var p = addr.IndexOf(':');
-            if (p > 0) addr = addr[..p];
+            if (p > 0) addr = addr.Substring(0, p);
 
             return addr;
         }
@@ -84,13 +84,13 @@ namespace NewLife.Melsec.Drivers
                         {
                             ConnectTimeOut = 3000,
 
-                            IpAddress = address[..p],
-                            Port = address[(p + 1)..].ToInt(),
+                            IpAddress = address.Substring(0, p),
+                            Port = address.Substring(p + 1).ToInt(),
                         };
 
-                        if (!pm.DataFormat.IsNullOrEmpty() && Enum.TryParse(typeof(DataFormat), pm.DataFormat, out var format))
+                        if (!pm.DataFormat.IsNullOrEmpty() && Enum.TryParse<DataFormat>(pm.DataFormat, out var format))
                         {
-                            _plcNet.ByteTransform.DataFormat = (DataFormat)format;
+                            _plcNet.ByteTransform.DataFormat = format;
                         }
 
                         var connect = _plcNet.ConnectServer();

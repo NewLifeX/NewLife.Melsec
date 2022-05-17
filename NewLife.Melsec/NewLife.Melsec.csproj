@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1;netstandard2.0;net4.0;net4.5</TargetFrameworks>
     <AssemblyTitle>三菱PLC协议</AssemblyTitle>
     <Description>三菱PLC协议</Description>
     <Company>新生命开发团队</Company>
@@ -43,7 +43,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.IoT" Version="1.1.2022.503-beta0225" />
+    <PackageReference Include="NewLife.IoT" Version="1.1.2022.517-beta1623" />
   </ItemGroup>
 
   <ItemGroup>
