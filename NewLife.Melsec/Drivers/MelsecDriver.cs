@@ -7,184 +7,187 @@ using NewLife.IoT.ThingModels;
 using NewLife.Log;
 using NewLife.Serialization;
 
-namespace NewLife.Melsec.Drivers
+namespace NewLife.Melsec.Drivers;
+
+/// <summary>
+/// 三菱PLC驱动
+/// </summary>
+[Driver("MelsecPLC")]
+[DisplayName("三菱PLC")]
+public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
 {
+    private MelsecMcNet _plcNet;
+
     /// <summary>
-    /// 三菱PLC驱动
+    /// 打开通道数量
     /// </summary>
-    [Driver("MelsecPLC")]
-    [DisplayName("三菱PLC")]
-    public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
+    private Int32 _nodes;
+
+    /// <summary>
+    /// 创建驱动参数对象，可序列化成Xml/Json作为该协议的参数模板
+    /// </summary>
+    /// <returns></returns>
+    public virtual IDriverParameter GetDefaultParameter() => new MelsecParameter
     {
-        private MelsecMcNet _plcNet;
+        Address = "127.0.0.1:6000",
+        DataFormat = "CDAB",
+    };
 
-        /// <summary>
-        /// 打开通道数量
-        /// </summary>
-        private Int32 _nodes;
+    /// <summary>获取默认点位</summary>
+    /// <returns></returns>
+    public IPoint[] GetDefaultPoints() => null;
 
-        /// <summary>
-        /// 创建驱动参数对象，可序列化成Xml/Json作为该协议的参数模板
-        /// </summary>
-        /// <returns></returns>
-        public virtual IDriverParameter CreateParameter() => new MelsecParameter
+    /// <summary>
+    /// 从点位中解析地址
+    /// </summary>
+    /// <param name="point"></param>
+    /// <returns></returns>
+    public virtual String GetAddress(IPoint point)
+    {
+        if (point == null) throw new ArgumentException("点位信息不能为空！");
+
+        // 去掉冒号后面的位域
+        var addr = point.Address;
+        var p = addr.IndexOf(':');
+        if (p > 0) addr = addr.Substring(0, p);
+
+        return addr;
+    }
+
+    /// <summary>
+    /// 打开通道。一个ModbusTcp设备可能分为多个通道读取，需要共用Tcp连接，以不同节点区分
+    /// </summary>
+    /// <param name="device">通道</param>
+    /// <param name="parameters">参数</param>
+    /// <returns></returns>
+    public virtual INode Open(IDevice device, IDictionary<String, Object> parameters)
+    {
+        var pm = JsonHelper.Convert<MelsecParameter>(parameters);
+        var address = pm.Address;
+        if (address.IsNullOrEmpty()) throw new ArgumentException("参数中未指定地址address");
+
+        var p = address.IndexOf(':');
+        if (p < 0) throw new ArgumentException($"参数中地址address格式错误:{address}");
+
+        var node = new MelsecNode
         {
-            Address = "127.0.0.1:6000",
-            DataFormat = "CDAB",
+            Address = address,
+
+            Driver = this,
+            Device = device,
+            Parameter = pm,
         };
 
-        /// <summary>
-        /// 从点位中解析地址
-        /// </summary>
-        /// <param name="point"></param>
-        /// <returns></returns>
-        public virtual String GetAddress(IPoint point)
+        if (_plcNet == null)
         {
-            if (point == null) throw new ArgumentException("点位信息不能为空！");
-
-            // 去掉冒号后面的位域
-            var addr = point.Address;
-            var p = addr.IndexOf(':');
-            if (p > 0) addr = addr.Substring(0, p);
-
-            return addr;
-        }
-
-        /// <summary>
-        /// 打开通道。一个ModbusTcp设备可能分为多个通道读取，需要共用Tcp连接，以不同节点区分
-        /// </summary>
-        /// <param name="device">通道</param>
-        /// <param name="parameters">参数</param>
-        /// <returns></returns>
-        public virtual INode Open(IDevice device, IDictionary<String, Object> parameters)
-        {
-            var pm = JsonHelper.Convert<MelsecParameter>(parameters);
-            var address = pm.Address;
-            if (address.IsNullOrEmpty()) throw new ArgumentException("参数中未指定地址address");
-
-            var p = address.IndexOf(':');
-            if (p < 0) throw new ArgumentException($"参数中地址address格式错误:{address}");
-
-            var node = new MelsecNode
+            lock (this)
             {
-                Address = address,
-
-                Driver = this,
-                Device = device,
-                Parameter = pm,
-            };
-
-            if (_plcNet == null)
-            {
-                lock (this)
+                if (_plcNet == null)
                 {
-                    if (_plcNet == null)
+                    _plcNet = new MelsecMcNet
                     {
-                        _plcNet = new MelsecMcNet
-                        {
-                            ConnectTimeOut = 3000,
+                        ConnectTimeOut = 3000,
 
-                            IpAddress = address.Substring(0, p),
-                            Port = address.Substring(p + 1).ToInt(),
-                        };
+                        IpAddress = address.Substring(0, p),
+                        Port = address.Substring(p + 1).ToInt(),
+                    };
 
-                        if (!pm.DataFormat.IsNullOrEmpty() && Enum.TryParse<DataFormat>(pm.DataFormat, out var format))
-                        {
-                            _plcNet.ByteTransform.DataFormat = format;
-                        }
-
-                        var connect = _plcNet.ConnectServer();
-
-                        if (!connect.IsSuccess) throw new Exception($"连接失败：{connect.Message}");
+                    if (!pm.DataFormat.IsNullOrEmpty() && Enum.TryParse<DataFormat>(pm.DataFormat, out var format))
+                    {
+                        _plcNet.ByteTransform.DataFormat = format;
                     }
+
+                    var connect = _plcNet.ConnectServer();
+
+                    if (!connect.IsSuccess) throw new Exception($"连接失败：{connect.Message}");
                 }
             }
-
-            Interlocked.Increment(ref _nodes);
-
-            return node;
         }
 
-        /// <summary>
-        /// 关闭设备驱动
-        /// </summary>
-        /// <param name="node"></param>
-        public void Close(INode node)
-        {
-            if (Interlocked.Decrement(ref _nodes) <= 0)
-            {
-                _plcNet?.ConnectClose();
-                _plcNet.TryDispose();
-                _plcNet = null;
-            }
-        }
+        Interlocked.Increment(ref _nodes);
 
-        /// <summary>
-        /// 读取数据
-        /// </summary>
-        /// <param name="node">节点对象，可存储站号等信息，仅驱动自己识别</param>
-        /// <param name="points">点位集合，Address属性地址示例：D100、C100、W100、H100</param>
-        /// <returns></returns>
-        public virtual IDictionary<String, Object> Read(INode node, IPoint[] points)
-        {
-            var dic = new Dictionary<String, Object>();
-
-            if (points == null || points.Length == 0) return dic;
-
-            foreach (var point in points)
-            {
-                var name = point.Name;
-                var addr = GetAddress(point);
-                var length = point.Length;
-                var data = _plcNet.Read(addr, (UInt16)(length / 2));
-                if (!data.IsSuccess) throw new Exception($"读取数据失败：{data.ToJson()}");
-                dic[name] = data.Content;
-            }
-
-            return dic;
-        }
-
-        /// <summary>
-        /// 写入数据
-        /// </summary>
-        /// <param name="node">节点对象，可存储站号等信息，仅驱动自己识别</param>
-        /// <param name="point">点位，Address属性地址示例：D100、C100、W100、H100</param>
-        /// <param name="value">数据</param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException"></exception>
-        public virtual Object Write(INode node, IPoint point, Object value)
-        {
-            var addr = GetAddress(point);
-            var res = value switch
-            {
-                Int32 v1 => _plcNet.Write(addr, v1),
-                String v2 => _plcNet.Write(addr, v2),
-                Boolean v3 => _plcNet.Write(addr, v3),
-                Byte[] v4 => _plcNet.Write(addr, v4),
-                _ => throw new ArgumentException("暂不支持写入该类型数据！"),
-            };
-            return res;
-        }
-
-        /// <summary>
-        /// 控制设备，特殊功能使用
-        /// </summary>
-        /// <param name="node"></param>
-        /// <param name="parameters"></param>
-        /// <exception cref="NotImplementedException"></exception>
-        public void Control(INode node, IDictionary<String, Object> parameters) => throw new NotImplementedException();
-
-        #region 日志
-        /// <summary>链路追踪</summary>
-        public ITracer Tracer { get; set; }
-
-        /// <summary>日志</summary>
-        public ILog Log { get; set; }
-
-        /// <summary>写日志</summary>
-        /// <param name="format"></param>
-        /// <param name="args"></param>
-        public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
-        #endregion
+        return node;
     }
+
+    /// <summary>
+    /// 关闭设备驱动
+    /// </summary>
+    /// <param name="node"></param>
+    public void Close(INode node)
+    {
+        if (Interlocked.Decrement(ref _nodes) <= 0)
+        {
+            _plcNet?.ConnectClose();
+            _plcNet.TryDispose();
+            _plcNet = null;
+        }
+    }
+
+    /// <summary>
+    /// 读取数据
+    /// </summary>
+    /// <param name="node">节点对象，可存储站号等信息，仅驱动自己识别</param>
+    /// <param name="points">点位集合，Address属性地址示例：D100、C100、W100、H100</param>
+    /// <returns></returns>
+    public virtual IDictionary<String, Object> Read(INode node, IPoint[] points)
+    {
+        var dic = new Dictionary<String, Object>();
+
+        if (points == null || points.Length == 0) return dic;
+
+        foreach (var point in points)
+        {
+            var name = point.Name;
+            var addr = GetAddress(point);
+            var length = point.Length;
+            var data = _plcNet.Read(addr, (UInt16)(length / 2));
+            if (!data.IsSuccess) throw new Exception($"读取数据失败：{data.ToJson()}");
+            dic[name] = data.Content;
+        }
+
+        return dic;
+    }
+
+    /// <summary>
+    /// 写入数据
+    /// </summary>
+    /// <param name="node">节点对象，可存储站号等信息，仅驱动自己识别</param>
+    /// <param name="point">点位，Address属性地址示例：D100、C100、W100、H100</param>
+    /// <param name="value">数据</param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
+    public virtual Object Write(INode node, IPoint point, Object value)
+    {
+        var addr = GetAddress(point);
+        var res = value switch
+        {
+            Int32 v1 => _plcNet.Write(addr, v1),
+            String v2 => _plcNet.Write(addr, v2),
+            Boolean v3 => _plcNet.Write(addr, v3),
+            Byte[] v4 => _plcNet.Write(addr, v4),
+            _ => throw new ArgumentException("暂不支持写入该类型数据！"),
+        };
+        return res;
+    }
+
+    /// <summary>
+    /// 控制设备，特殊功能使用
+    /// </summary>
+    /// <param name="node"></param>
+    /// <param name="parameters"></param>
+    /// <exception cref="NotImplementedException"></exception>
+    public void Control(INode node, IDictionary<String, Object> parameters) => throw new NotImplementedException();
+
+    #region 日志
+    /// <summary>链路追踪</summary>
+    public ITracer Tracer { get; set; }
+
+    /// <summary>日志</summary>
+    public ILog Log { get; set; }
+
+    /// <summary>写日志</summary>
+    /// <param name="format"></param>
+    /// <param name="args"></param>
+    public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
+    #endregion
 }
