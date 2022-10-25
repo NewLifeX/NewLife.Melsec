@@ -13,4 +13,25 @@ public class MelsecParameter : IDriverParameter
     /// <summary>数据格式。ABCD/BADC/CDAB/DCBA</summary>
     [Description("数据格式。ABCD/BADC/CDAB/DCBA")]
     public String DataFormat { get; set; }
+
+    /// <summary>通信协议。MCQna3E/FxLinks485</summary>
+    [Description("通信协议。MCQna3E/FxLinks485")]
+    public Protocol Protocol { get; set; } = Protocol.MCQna3E;
+
+    /// <summary>串口名称</summary>
+    [Description("串口名称")]
+    public String ComName { get; set; }
+}
+
+public enum Protocol
+{
+    /// <summary>
+    /// MC协议Qna-3E模式
+    /// </summary>
+    MCQna3E,
+
+    /// <summary>
+    /// FX系列计算机链
+    /// </summary>
+    FxLinks485
 }

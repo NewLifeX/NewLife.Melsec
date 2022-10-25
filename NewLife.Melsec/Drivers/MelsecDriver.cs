@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel;
+using System.IO.Ports;
+using System.Net;
 using HslCommunication.Core;
 using HslCommunication.Profinet.Melsec;
 using NewLife.IoT;
@@ -16,7 +18,7 @@ namespace NewLife.Melsec.Drivers;
 [DisplayName("三菱PLC")]
 public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
 {
-    private MelsecMcNet _plcNet;
+    private IReadWriteNet _plcNet;
 
     /// <summary>
     /// 打开通道数量
@@ -31,6 +33,7 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
     {
         Address = "127.0.0.1:6000",
         DataFormat = "CDAB",
+        Protocol = Protocol.MCQna3E
     };
 
     /// <summary>获取默认点位</summary>
@@ -63,20 +66,47 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
     public virtual INode Open(IDevice device, IDictionary<String, Object> parameters)
     {
         var pm = JsonHelper.Convert<MelsecParameter>(parameters);
-        var address = pm.Address;
-        if (address.IsNullOrEmpty()) throw new ArgumentException("参数中未指定地址address");
 
-        var p = address.IndexOf(':');
-        if (p < 0) throw new ArgumentException($"参数中地址address格式错误:{address}");
+        if (pm == null) throw new ArgumentException($"参数不合法：{parameters.ToJson()}");
 
-        var node = new MelsecNode
+        MelsecNode node;
+        String ipAddress;
+        Int32 port;
+
+        if (pm.Protocol == Protocol.MCQna3E)
         {
-            Address = address,
+            var address = pm.Address;
+            if (address.IsNullOrEmpty()) throw new ArgumentException("参数中未指定地址address");
 
-            Driver = this,
-            Device = device,
-            Parameter = pm,
-        };
+            var p = address.IndexOf(':');
+            if (p < 0) throw new ArgumentException($"参数中地址address格式错误:{address}");
+
+
+
+            node = new MelsecNode
+            {
+                Address = address,
+
+                Driver = this,
+                Device = device,
+                Parameter = pm,
+            };
+        }
+        else
+        {
+            if (pm.ComName.IsNullOrEmpty()) throw new ArgumentException("参数中未指定串口名称ComName");
+
+            node = new MelsecNode
+            {
+                Address = pm.ComName,
+
+                Driver = this,
+                Device = device,
+                Parameter = pm,
+            };
+        }
+
+
 
         if (_plcNet == null)
         {
@@ -84,22 +114,61 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
             {
                 if (_plcNet == null)
                 {
-                    _plcNet = new MelsecMcNet
+                    if (pm.Protocol == Protocol.MCQna3E)
                     {
-                        ConnectTimeOut = 3000,
+                        var address = pm.Address;
+                        var p = address.IndexOf(':');
 
-                        IpAddress = address.Substring(0, p),
-                        Port = address.Substring(p + 1).ToInt(),
-                    };
+                        ipAddress = address.Substring(0, p);
+                        port = address.Substring(p + 1).ToInt();
 
-                    if (!pm.DataFormat.IsNullOrEmpty() && Enum.TryParse<DataFormat>(pm.DataFormat, out var format))
+                        //MelsecA3CNet
+                        var plcNet = new MelsecMcNet
+                        {
+                            ConnectTimeOut = 3000,
+                            IpAddress = ipAddress,
+                            Port = port,
+                        };
+
+                        _plcNet = plcNet;
+
+                        if (!pm.DataFormat.IsNullOrEmpty() && Enum.TryParse<DataFormat>(pm.DataFormat, out var format))
+                        {
+                            plcNet.ByteTransform.DataFormat = format;
+                        }
+
+                        var connect = plcNet.ConnectServer();
+
+                        if (!connect.IsSuccess) throw new Exception($"连接失败：{connect.Message}");
+                    }
+                    else
                     {
-                        _plcNet.ByteTransform.DataFormat = format;
+                        var melsecSerial = new MelsecFxLinks();
+                        _plcNet = melsecSerial;
+
+                        var baudRate = 9600;
+                        var dataBits = 8;
+                        var stopBits = 1;
+                        var parity = 0;
+                        byte station = 0;
+
+                        melsecSerial.SerialPortInni(sp =>
+                        {
+                            sp.PortName = pm.ComName;
+                            sp.BaudRate = baudRate;
+                            sp.DataBits = dataBits;
+                            sp.StopBits = stopBits == 0 ? StopBits.None : (stopBits == 1 ? StopBits.One : StopBits.Two);
+                            sp.Parity = parity == 0 ? Parity.None : (parity == 1 ? Parity.Odd : Parity.Even);
+                        });
+                        melsecSerial.Station = station;
+                        melsecSerial.WaittingTime = 0;
+                        melsecSerial.SumCheck = false;
+                        melsecSerial.Format = 1;
+
+                        var connect = melsecSerial.Open();
+                        if (!connect.IsSuccess) throw new Exception($"连接失败：{connect.Message}");
                     }
 
-                    var connect = _plcNet.ConnectServer();
-
-                    if (!connect.IsSuccess) throw new Exception($"连接失败：{connect.Message}");
                 }
             }
         }
@@ -117,7 +186,7 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
     {
         if (Interlocked.Decrement(ref _nodes) <= 0)
         {
-            _plcNet?.ConnectClose();
+            if (_plcNet is MelsecMcNet plcNet) plcNet?.ConnectClose();
             _plcNet.TryDispose();
             _plcNet = null;
         }
