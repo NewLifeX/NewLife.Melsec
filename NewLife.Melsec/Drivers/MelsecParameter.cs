@@ -20,7 +20,11 @@ public class MelsecParameter : IDriverParameter
 
     /// <summary>串口名称</summary>
     [Description("串口名称")]
-    public String ComName { get; set; }
+    public String PortName { get; set; }
+
+    /// <summary>波特率</summary>
+    [Description("波特率")]
+    public Int32 Baudrate { get; set; } = 9600;
 }
 
 public enum Protocol

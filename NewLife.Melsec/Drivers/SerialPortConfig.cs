@@ -17,7 +17,7 @@ namespace NewLife.Net
 
         /// <summary>波特率</summary>
         [Description("波特率")]
-        public Int32 BaudRate { get; set; } = 115200;
+        public Int32 BaudRate { get; set; } = 9600;
 
         /// <summary>数据位</summary>
         [Description("数据位")]

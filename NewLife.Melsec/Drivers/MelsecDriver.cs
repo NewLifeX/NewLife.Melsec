@@ -94,11 +94,11 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
         }
         else
         {
-            if (pm.ComName.IsNullOrEmpty()) throw new ArgumentException("参数中未指定串口名称ComName");
+            if (pm.PortName.IsNullOrEmpty()) throw new ArgumentException("参数中未指定串口名称PortName");
 
             node = new MelsecNode
             {
-                Address = pm.ComName,
+                Address = pm.PortName,
 
                 Driver = this,
                 Device = device,
@@ -154,8 +154,8 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
 
                         melsecSerial.SerialPortInni(sp =>
                         {
-                            sp.PortName = pm.ComName;
-                            sp.BaudRate = baudRate;
+                            sp.PortName = pm.PortName;
+                            sp.BaudRate = pm.Baudrate;
                             sp.DataBits = dataBits;
                             sp.StopBits = stopBits == 0 ? StopBits.None : (stopBits == 1 ? StopBits.One : StopBits.Two);
                             sp.Parity = parity == 0 ? Parity.None : (parity == 1 ? Parity.Odd : Parity.Even);
@@ -234,6 +234,7 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
             String v2 => _plcNet.Write(addr, v2),
             Boolean v3 => _plcNet.Write(addr, v3),
             Byte[] v4 => _plcNet.Write(addr, v4),
+            Byte v5 => _plcNet.Write(addr, v5),
             _ => throw new ArgumentException("暂不支持写入该类型数据！"),
         };
         return res;
