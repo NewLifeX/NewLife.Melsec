@@ -11,39 +11,47 @@ using NewLife.Serialization;
 
 XTrace.UseConsole();
 
-//var ps = SerialTransport.GetPortNames();
-//var str = String.Join(",", ps);
-//var cfg = SerialPortConfig.Current;
+// var ps = SerialTransport.GetPortNames();
+// Console.WriteLine("请选择串口：");
 
-//var pt = new SerialTransport();
-//pt.PortName = ps[0];
-//pt.BaudRate = cfg.BaudRate;
-//pt.Parity = cfg.Parity;
-//pt.DataBits = cfg.DataBits;
-//pt.StopBits = cfg.StopBits;
-//pt.Disconnected +=Pt_Disconnected;
-//pt.Received += Pt_Received;
+// for (var i = 0; i < ps.Length; i++)
+// {
+//     Console.WriteLine($"{i}、{ps[i]}");
+// }
 
-//void Pt_Disconnected(Object? sender, EventArgs e)
-//{
-//    Console.WriteLine("断开连接");
-//    pt.Disconnected -= Pt_Disconnected;
-//    pt.Received -= Pt_Received;
-//    pt.Close();
-//}
+// var idx = Int32.Parse(Console.ReadLine());
+
+// var cfg = SerialPortConfig.Current;
+
+// var pt = new SerialTransport();
+// pt.PortName = ps[idx];
+// pt.BaudRate = cfg.BaudRate;
+// pt.Parity = cfg.Parity;
+// pt.DataBits = cfg.DataBits;
+// pt.StopBits = cfg.StopBits;
+// pt.Disconnected += Pt_Disconnected;
+// pt.Received += Pt_Received;
+
+// void Pt_Disconnected(Object? sender, EventArgs e)
+// {
+//     Console.WriteLine("断开连接");
+//     pt.Disconnected -= Pt_Disconnected;
+//     pt.Received -= Pt_Received;
+//     pt.Close();
+// }
 
 
 
-//void Pt_Received(Object? sender, ReceivedEventArgs e)
-//{
-//    var data = e.Packet.ReadBytes();
-//    Console.WriteLine(data.ToHex());
-//}
-//pt.Open();
+// void Pt_Received(Object? sender, ReceivedEventArgs e)
+// {
+//     var data = e.Packet.ReadBytes();
+//     Console.WriteLine(data.ToHex());
+// }
+// pt.Open();
 
-//Console.WriteLine(str);
-//Console.WriteLine(pt.Serial.IsOpen);
-//Console.ReadLine();
+// Console.WriteLine(ps[idx]);
+// Console.WriteLine(pt.Serial.IsOpen);
+// Console.ReadLine();
 
 Console.WriteLine("请选择协议：");
 Console.WriteLine("1、MCQna3E");
@@ -94,24 +102,25 @@ Console.WriteLine("请输入整数值，按q退出：");
 
 
 var str = Console.ReadLine();
+var point = new Point
+{
+    Name = "test",
+    Address = "D232",
+    Type = "ushort",
+    Length = 2
+};
 
 do
 {
     // 写入
     var data = BitConverter.GetBytes(Int32.Parse(str));
-    var point = new Point
-    {
-        Name = "test",
-        Address = "Y0",
-        Type = "byte",
-        Length = 1
-    };
 
-    var res = (OperateResult)driver.Write(node, point, (byte)Int32.Parse(str));
 
-    Console.WriteLine($"写入结果：{res.ToJson()}");
+    // var res = (OperateResult)driver.Write(node, point, Int16.Parse(str));
 
-    point.Address = "Y" + str;
+    // Console.WriteLine($"写入结果：{res.ToJson()}");
+
+    // point.Address = "Y" + str;
     // 读取
     var dic = driver.Read(node, new[] { point });
     Console.WriteLine($"读取结果1：{dic.ToJson()}");

@@ -147,22 +147,22 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
                         _plcNet = melsecSerial;
 
                         var baudRate = 9600;
-                        var dataBits = 8;
+                        var dataBits = 7;
                         var stopBits = 1;
-                        var parity = 0;
+                        var parity = 2;
                         byte station = 0;
 
                         melsecSerial.SerialPortInni(sp =>
                         {
                             sp.PortName = pm.PortName;
                             sp.BaudRate = pm.Baudrate;
-                            sp.DataBits = dataBits;
-                            sp.StopBits = stopBits == 0 ? StopBits.None : (stopBits == 1 ? StopBits.One : StopBits.Two);
-                            sp.Parity = parity == 0 ? Parity.None : (parity == 1 ? Parity.Odd : Parity.Even);
+                            sp.DataBits = 7;// dataBits;
+                            sp.StopBits = StopBits.One;
+                            sp.Parity = Parity.Even;
                         });
                         melsecSerial.Station = station;
                         melsecSerial.WaittingTime = 0;
-                        melsecSerial.SumCheck = false;
+                        melsecSerial.SumCheck = true;
                         melsecSerial.Format = 1;
 
                         var connect = melsecSerial.Open();
@@ -210,7 +210,16 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
             var addr = GetAddress(point);
             var length = point.Length;
             var data = _plcNet.Read(addr, (UInt16)(length / 2));
+
+            if (!data.IsSuccess)
+            {
+                var r = _plcNet.ReadUInt16(addr);
+                XTrace.WriteLine($"读取数据：{addr}={r.ToJson()}");
+            }
             if (!data.IsSuccess) throw new Exception($"读取数据失败：{data.ToJson()}");
+
+
+
             dic[name] = data.Content;
         }
 
