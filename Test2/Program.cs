@@ -29,8 +29,11 @@ try
 
     Thread.Sleep(50);
 
+    var count = sp.BytesToRead;
+    XTrace.WriteLine("count {0}", count);
+
     var rs = new Byte[256];
-    var count = sp.Read(buf, 0, buf.Length);
+    count = sp.Read(rs, 0, rs.Length);
 
     var pk = new Packet(rs, 0, count);
 
@@ -40,3 +43,6 @@ catch (Exception ex)
 {
     XTrace.WriteException(ex);
 }
+
+Console.WriteLine("OK!");
+Console.ReadKey();
