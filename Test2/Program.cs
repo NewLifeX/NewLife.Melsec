@@ -6,6 +6,30 @@ using NewLife.Log;
 
 XTrace.UseConsole();
 
+{
+    // FxLinks485 读取 WR
+    // 05 30 35 46 46 57 52 30 44 30 32 31 30 30 31 33 32
+    // 02 30 35 46 46 30 30 30 31 03 42 35
+
+    var buf = "05 30 35 46 46 57 52 30 44 30 32 31 30 30 31 33 32".ToHex();
+    XTrace.WriteLine("buf = {0}", buf.ToHex(" "));
+
+    var buf2 = buf.ReadBytes(1);
+    XTrace.WriteLine("str = {0}", buf2.ToStr());
+}
+
+{
+    // FxLinks485 写入 WW
+    // 05 30 35 46 46 57 57 30 44 30 32 31 30 30 31 30 30 30 31 46 38
+    // 06 30 35 46 46
+
+    var buf = "05 30 35 46 46 57 57 30 44 30 32 31 30 30 31 30 30 30 31 46 38".ToHex();
+    XTrace.WriteLine("buf = {0}", buf.ToHex(" "));
+
+    var buf2 = buf.ReadBytes(1);
+    XTrace.WriteLine("str = {0}", buf2.ToStr());
+}
+
 try
 {
     var sp = new SerialPort("COM7", 9600)
