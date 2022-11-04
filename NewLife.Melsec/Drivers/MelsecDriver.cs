@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel;
 using System.IO.Ports;
-using System.Net;
 using HslCommunication.Core;
 using HslCommunication.Profinet.Melsec;
 using NewLife.IoT;
@@ -16,7 +15,7 @@ namespace NewLife.Melsec.Drivers;
 /// </summary>
 [Driver("MelsecPLC")]
 [DisplayName("三菱PLC")]
-public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
+public class MelsecDriver : DriverBase
 {
     private IReadWriteNet _plcNet;
 
@@ -29,16 +28,12 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
     /// 创建驱动参数对象，可序列化成Xml/Json作为该协议的参数模板
     /// </summary>
     /// <returns></returns>
-    public virtual IDriverParameter GetDefaultParameter() => new MelsecParameter
+    public override IDriverParameter GetDefaultParameter() => new MelsecParameter
     {
         Address = "127.0.0.1:6000",
         DataFormat = "CDAB",
         Protocol = Protocol.MCQna3E
     };
-
-    /// <summary>获取默认点位</summary>
-    /// <returns></returns>
-    public IPoint[] GetDefaultPoints() => null;
 
     /// <summary>
     /// 从点位中解析地址
@@ -63,7 +58,7 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
     /// <param name="device">通道</param>
     /// <param name="parameters">参数</param>
     /// <returns></returns>
-    public virtual INode Open(IDevice device, IDictionary<String, Object> parameters)
+    public override INode Open(IDevice device, IDictionary<String, Object> parameters)
     {
         var pm = JsonHelper.Convert<MelsecParameter>(parameters);
 
@@ -182,7 +177,7 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
     /// 关闭设备驱动
     /// </summary>
     /// <param name="node"></param>
-    public void Close(INode node)
+    public override void Close(INode node)
     {
         if (Interlocked.Decrement(ref _nodes) <= 0)
         {
@@ -198,7 +193,7 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
     /// <param name="node">节点对象，可存储站号等信息，仅驱动自己识别</param>
     /// <param name="points">点位集合，Address属性地址示例：D100、C100、W100、H100</param>
     /// <returns></returns>
-    public virtual IDictionary<String, Object> Read(INode node, IPoint[] points)
+    public override IDictionary<String, Object> Read(INode node, IPoint[] points)
     {
         var dic = new Dictionary<String, Object>();
 
@@ -234,7 +229,7 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
     /// <param name="value">数据</param>
     /// <returns></returns>
     /// <exception cref="ArgumentException"></exception>
-    public virtual Object Write(INode node, IPoint point, Object value)
+    public override Object Write(INode node, IPoint point, Object value)
     {
         var addr = GetAddress(point);
         var res = value switch
@@ -248,25 +243,4 @@ public class MelsecDriver : DisposeBase, IDriver, ILogFeature, ITracerFeature
         };
         return res;
     }
-
-    /// <summary>
-    /// 控制设备，特殊功能使用
-    /// </summary>
-    /// <param name="node"></param>
-    /// <param name="parameters"></param>
-    /// <exception cref="NotImplementedException"></exception>
-    public void Control(INode node, IDictionary<String, Object> parameters) => throw new NotImplementedException();
-
-    #region 日志
-    /// <summary>链路追踪</summary>
-    public ITracer Tracer { get; set; }
-
-    /// <summary>日志</summary>
-    public ILog Log { get; set; }
-
-    /// <summary>写日志</summary>
-    /// <param name="format"></param>
-    /// <param name="args"></param>
-    public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
-    #endregion
 }
