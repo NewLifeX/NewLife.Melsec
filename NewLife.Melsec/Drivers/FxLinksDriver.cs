@@ -2,8 +2,9 @@
 using NewLife.IoT;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
-using NewLife.Log;
+using NewLife.IoT.ThingSpecification;
 using NewLife.Melsec.Protocols;
+using NewLife.Reflection;
 using NewLife.Serialization;
 
 namespace NewLife.Melsec.Drivers;
@@ -15,7 +16,8 @@ namespace NewLife.Melsec.Drivers;
 [DisplayName("三菱FxLinks")]
 public class FxLinksDriver : DriverBase
 {
-    private FxLinks _link;
+    /// <summary>链接</summary>
+    public FxLinks Link { get; set; }
 
     /// <summary>
     /// 打开通道数量
@@ -38,16 +40,16 @@ public class FxLinksDriver : DriverBase
     /// </summary>
     /// <param name="point"></param>
     /// <returns></returns>
-    public virtual String GetAddress(IPoint point)
+    public virtual UInt16 GetAddress(IPoint point)
     {
         if (point == null) throw new ArgumentException("点位信息不能为空！");
 
         // 去掉冒号后面的位域
         var addr = point.Address;
         var p = addr.IndexOf(':');
-        if (p > 0) addr = addr.Substring(0, p);
+        if (p > 0) addr = addr[..p];
 
-        return addr;
+        return (UInt16)addr.ToInt();
     }
 
     /// <summary>
@@ -73,11 +75,11 @@ public class FxLinksDriver : DriverBase
         };
 
         // 实例化
-        if (_link == null)
+        if (Link == null)
         {
             lock (this)
             {
-                if (_link == null)
+                if (Link == null)
                 {
                     var link = new FxLinks();
                     if (p.Timeout > 0) link.Timeout = p.Timeout;
@@ -85,7 +87,7 @@ public class FxLinksDriver : DriverBase
                     // 外部已指定通道时，打开连接
                     if (device != null) link.Open();
 
-                    _link = link;
+                    Link = link;
                 }
             }
         }
@@ -103,8 +105,8 @@ public class FxLinksDriver : DriverBase
     {
         if (Interlocked.Decrement(ref _nodes) <= 0)
         {
-            _link.TryDispose();
-            _link = null;
+            Link.TryDispose();
+            Link = null;
         }
     }
 
@@ -120,12 +122,14 @@ public class FxLinksDriver : DriverBase
 
         if (points == null || points.Length == 0) return dic;
 
+        var n = node as MelsecNode;
+
         foreach (var point in points)
         {
             var name = point.Name;
             var addr = GetAddress(point);
             var length = point.Length;
-            var data = _link.Read(addr, (UInt16)(length / 2));
+            var data = Link.Read("WR", n.Host, addr, (UInt16)(length / 2));
 
             dic[name] = data;
         }
@@ -143,16 +147,104 @@ public class FxLinksDriver : DriverBase
     /// <exception cref="ArgumentException"></exception>
     public override Object Write(INode node, IPoint point, Object value)
     {
+        var n = node as MelsecNode;
         var addr = GetAddress(point);
-        var res = value switch
+
+        UInt16[] vs;
+        if (value is Byte[] buf)
         {
-            Int32 v1 => _link.Write(addr, v1),
-            String v2 => _link.Write(addr, v2),
-            Boolean v3 => _link.Write(addr, v3),
-            Byte[] v4 => _link.Write(addr, v4),
-            Byte v5 => _link.Write(addr, v5),
-            _ => throw new ArgumentException("暂不支持写入该类型数据！"),
-        };
-        return res;
+            vs = new UInt16[(Int32)Math.Ceiling(buf.Length / 2d)];
+            for (var i = 0; i < vs.Length; i++)
+            {
+                vs[i] = buf.ToUInt16(i * 2, false);
+            }
+        }
+        else
+        {
+            vs = ConvertToRegister(value, point, n.Device?.Specification);
+
+            if (vs == null) throw new NotSupportedException($"点位[{point.Name}]不支持数据[{value}]");
+        }
+
+        // 加锁，避免冲突
+        lock (Link)
+        {
+            return Link.Write("WW", n.Host, addr, vs);
+        }
+    }
+
+    /// <summary>原始数据转寄存器数组</summary>
+    /// <param name="data"></param>
+    /// <param name="point"></param>
+    /// <param name="spec"></param>
+    /// <returns></returns>
+    private UInt16[] ConvertToRegister(Object data, IPoint point, ThingSpec spec)
+    {
+        // 找到物属性定义
+        var pi = spec?.Properties?.FirstOrDefault(e => e.Id.EqualIgnoreCase(point.Name));
+        var type = pi?.DataType?.Type;
+        if (type.IsNullOrEmpty()) type = point.Type;
+        //if (type.IsNullOrEmpty()) return null;
+
+        var type2 = TypeHelper.GetNetType(point);
+        //var value = data.ChangeType(type2);
+        switch (type2.GetTypeCode())
+        {
+            case TypeCode.Boolean:
+                return data.ToBoolean() ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+            //case TypeCode.Byte:
+            //    break;
+            //case TypeCode.Char:
+            //    break;
+            //case TypeCode.DateTime:
+            //    break;
+            //case TypeCode.DBNull:
+            //    break;
+            //case TypeCode.Empty:
+            //    break;
+            case TypeCode.Int16:
+            case TypeCode.UInt16:
+                return new[] { (UInt16)data.ToInt() };
+            case TypeCode.Int32:
+            case TypeCode.UInt32:
+                {
+                    var n = data.ToInt();
+                    return new[] { (UInt16)(n >> 16), (UInt16)(n & 0xFFFF) };
+                }
+            case TypeCode.Int64:
+            case TypeCode.UInt64:
+                {
+                    var n = data.ToLong();
+                    return new[] { (UInt16)(n >> 48), (UInt16)(n >> 32), (UInt16)(n >> 16), (UInt16)(n & 0xFFFF) };
+                }
+            //case TypeCode.Object:
+            //    break;
+            //case TypeCode.SByte:
+            //    break;
+            case TypeCode.Single:
+                {
+                    var d = (Single)data.ToDouble();
+                    //var n = BitConverter.SingleToInt32Bits(d);
+                    var n = (UInt32)d;
+                    return new[] { (UInt16)(n >> 16), (UInt16)(n & 0xFFFF) };
+                }
+            case TypeCode.Double:
+                {
+                    var d = (Double)data.ToDouble();
+                    //var n = BitConverter.DoubleToInt64Bits(d);
+                    var n = (UInt64)d;
+                    return new[] { (UInt16)(n >> 48), (UInt16)(n >> 32), (UInt16)(n >> 16), (UInt16)(n & 0xFFFF) };
+                }
+            case TypeCode.Decimal:
+                {
+                    var d = (Decimal)data.ToDecimal();
+                    var n = (UInt64)d;
+                    return new[] { (UInt16)(n >> 48), (UInt16)(n >> 32), (UInt16)(n >> 16), (UInt16)(n & 0xFFFF) };
+                }
+            //case TypeCode.String:
+            //    break;
+            default:
+                return null;
+        }
     }
 }

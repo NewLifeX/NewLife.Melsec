@@ -9,13 +9,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.github\workflows\publish-beta.yml = .github\workflows\publish-beta.yml
 		.github\workflows\publish.yml = .github\workflows\publish.yml
 		Readme.MD = Readme.MD
+		.github\workflows\test.yml = .github\workflows\test.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NewLife.Melsec", "NewLife.Melsec\NewLife.Melsec.csproj", "{2B4793CE-80F1-4D8C-8287-ECE1E031CE41}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", "{D5275619-E773-4FE6-9DC5-9B1B9E01E9BA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test2", "Test2\Test2.csproj", "{6B0D3C26-B64C-49A5-AC23-B995C5A2598D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test2", "Test2\Test2.csproj", "{6B0D3C26-B64C-49A5-AC23-B995C5A2598D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XUnitTest", "XUnitTest\XUnitTest.csproj", "{78CEBBAB-1710-41BE-B465-81BF4A939FCA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,6 +38,10 @@ Global
 		{6B0D3C26-B64C-49A5-AC23-B995C5A2598D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6B0D3C26-B64C-49A5-AC23-B995C5A2598D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6B0D3C26-B64C-49A5-AC23-B995C5A2598D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78CEBBAB-1710-41BE-B465-81BF4A939FCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78CEBBAB-1710-41BE-B465-81BF4A939FCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78CEBBAB-1710-41BE-B465-81BF4A939FCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78CEBBAB-1710-41BE-B465-81BF4A939FCA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
