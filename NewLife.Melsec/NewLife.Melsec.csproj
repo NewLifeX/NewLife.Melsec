@@ -37,7 +37,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="HslCommunication" Version="11.1.1" />
+    <PackageReference Include="HslCommunication" Version="11.2.1" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -45,15 +45,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.IoT" Version="1.5.2022.1101" />
+    <PackageReference Include="NewLife.IoT" Version="1.5.2022.1105-beta0231" />
+    <PackageReference Include="System.IO.Ports" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="..\Doc\leaf.png" Link="leaf.png" PackagePath="\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Protocols\" />
   </ItemGroup>
 
 </Project>
