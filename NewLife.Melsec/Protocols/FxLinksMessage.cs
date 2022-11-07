@@ -52,7 +52,13 @@ public class FxLinksMessage : IAccessor
     #region 构造
     /// <summary>已重载。友好字符串</summary>
     /// <returns></returns>
-    public override String ToString() => $"{Command} ({Address}, {Payload?.ToHex()})";
+    public override String ToString()
+    {
+        if (Code == ControlCodes.ENQ)
+            return $"{Command} ({Address}, {Payload?.ToHex()})";
+        else
+            return $"{Code} ({Payload?.ToHex()})";
+    }
     #endregion
 
     #region 方法
@@ -89,8 +95,24 @@ public class FxLinksMessage : IAccessor
                 }
 
             case ControlCodes.STX:
-                break;
+                {
+                    // 05FF0001\03B5
+                    var hex = stream.ReadBytes(-1).ToStr();
+
+                    Host = Convert.ToByte(hex[..2], 16);
+                    PC = Convert.ToByte(hex[2..4], 16);
+
+                    var len = hex.Length - 4 - 3;
+                    if (len > 0) Payload = hex.Substring(4, len).ToHex();
+
+                    CheckSum = Convert.ToByte(hex[^2..], 16);
+                    CheckSum2 = (Byte)hex.ToArray().Take(hex.Length - 2).Sum(e => e);
+                    break;
+                }
+
             case ControlCodes.ETX:
+                break;
+            case ControlCodes.ACK:
                 break;
             default:
                 return false;
@@ -152,7 +174,32 @@ public class FxLinksMessage : IAccessor
                 }
 
             case ControlCodes.STX:
-                break;
+                {
+                    // 05FF0001\03B5
+                    var sb = new StringBuilder(64);
+
+                    sb.Append(Host.ToString("X2"));
+                    sb.Append(PC.ToString("X2"));
+
+                    var pk = Payload;
+                    if (pk != null && pk.Total > 0) sb.Append(pk.ToHex(256));
+
+                    sb.Append((Char)ControlCodes.ETX);
+
+                    var sum = 0;
+                    for (var i = 0; i < sb.Length; i++)
+                    {
+                        sum += sb[i];
+                    }
+                    CheckSum2 = (Byte)sum;
+                    sb.Append(CheckSum2.ToString("X2"));
+
+                    var hex = sb.ToString();
+                    stream.Write(hex.GetBytes());
+
+                    break;
+                }
+
             case ControlCodes.ETX:
                 break;
             default:
