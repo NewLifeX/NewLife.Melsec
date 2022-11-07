@@ -102,25 +102,27 @@ public class FxLinksDriverTests
         var node = driver.Open(null, p);
 
         // 模拟FxLinks
-        var mb = new Mock<FxLinks>() { CallBase = true };
-        //mb.Setup(e => e.SendCommand(FunctionCodes.ReadRegister, 1, 100, 1))
-        //    .Returns("02-02-00".ToHex());
-        //mb.Setup(e => e.SendCommand(FunctionCodes.ReadRegister, 1, 102, 1))
-        //    .Returns("02-05-00".ToHex());
-        driver.Link = mb.Object;
+        var mockFxLinks = new Mock<FxLinks> { CallBase = true };
+        mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
+            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            {
+                Payload = e.Address == "D100" ? "12-34".ToHex() : "56-78".ToHex(),
+            });
+
+        driver.Link = mockFxLinks.Object;
 
         var points = new List<IPoint>
         {
             new PointModel
             {
                 Name = "调节池运行时间",
-                Address = "4x100",
+                Address = "D100",
                 Length = 2
             },
             new PointModel
             {
                 Name = "调节池停止时间",
-                Address = "4x102",
+                Address = "D102",
                 Length = 2
             }
         };
@@ -130,8 +132,8 @@ public class FxLinksDriverTests
         Assert.NotNull(rs);
         Assert.Equal(2, rs.Count);
 
-        Assert.Equal(0x0200, (rs["调节池运行时间"] as Byte[]).ToUInt16(0, false));
-        Assert.Equal(0x0500, (rs["调节池停止时间"] as Byte[]).ToUInt16(0, false));
+        Assert.Equal(0x1234, (rs["调节池运行时间"] as Byte[]).ToUInt16(0, false));
+        Assert.Equal(0x5678, (rs["调节池停止时间"] as Byte[]).ToUInt16(0, false));
     }
 
     [Fact]
@@ -141,28 +143,23 @@ public class FxLinksDriverTests
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Command = e.Command,
-                Address = e.Address,
-                Payload = e.Payload.Slice(0, 2).Append(e.Payload.Slice(2, 2))
+                Code = ControlCodes.ACK,
             });
 
-        var mockDriver = new Mock<FxLinksDriver> { CallBase = true };
-        //mockDriver.Setup(e => e.CreateFxLinks(It.IsAny<IDevice>(), It.IsAny<MelsecNode>(), It.IsAny<IDictionary<String, Object>>()))
-        //    .Returns(mockFxLinks.Object);
-
-        var driver = mockDriver.Object;
+        var driver = new FxLinksDriver();
+        driver.Link = mockFxLinks.Object;
 
         var node = driver.Open(null, new FxLinksParameter());
 
         var pt = new PointModel
         {
             Name = "调节池运行时间",
-            Address = "4x100",
+            Address = "D100",
             Type = "short",
             Length = 2
         };
 
         var rs = (Int32)driver.Write(node, pt, "15");
-        Assert.Equal(0x000F, rs);
+        Assert.Equal(0, rs);
     }
 }

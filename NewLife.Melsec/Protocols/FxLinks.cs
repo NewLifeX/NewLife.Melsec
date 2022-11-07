@@ -5,6 +5,7 @@ using NewLife.Data;
 using NewLife.Log;
 using NewLife.Serialization;
 using NewLife.Xml;
+using Newtonsoft.Json.Linq;
 
 [assembly: InternalsVisibleTo("XUnitTest, PublicKey=00240000048000001401000006020000002400005253413100080000010001000d41eb3bdab5c2150958b46c95632b7e4dcb0af77ed8637bd8543875bc2443d01273143bb46655a48a92efa76251adc63ccca6d0e9cef2e0ce93e32b5043bea179a6c710981be4a71703a03e10960643f7df091f499cf60183ef0e4e4e2eebf26e25cea0eebf87c8a6d7f8130c283fc3f747cb90623f0aaa619825e3fcd82f267a0f4bfd26c9f2a6b5a62a6b180b4f6d1d091fce6bd60a9aa9aa5b815b833b44e0f2e58b28a354cb20f52f31bb3b3a7c54f515426537e41f9c20c07e51f9cab8abc311daac19a41bd473a51c7386f014edf1863901a5c29addc89da2f2659c9c1e95affd6997396b9680e317c493e974a813186da277ff9c1d1b30e33cb5a2f6")]
 
@@ -82,20 +83,24 @@ public class FxLinks : DisposeBase
     /// <param name="command">功能码</param>
     /// <param name="host">主机。一般是1</param>
     /// <param name="address">地址。例如0x0002</param>
-    /// <param name="value">数据值</param>
+    /// <param name="data">数据</param>
     /// <returns>返回响应消息的负载部分</returns>
-    public virtual Packet SendCommand(String command, Byte host, String address, UInt16 value)
+    public virtual FxLinksMessage SendCommand(String command, Byte host, String address, Packet data)
     {
-        var msg = new FxLinksMessage();
-        //msg.Host = host;
-        msg.Command = command;
-        msg.Address = address;
+        var msg = new FxLinksMessage
+        {
+            Code = ControlCodes.ENQ,
+            Host = host,
+            PC = 0xFF,
+            Command = command,
+            Address = address,
 
-        //msg.SetRequest(address, value);
+            Payload = data
+        };
 
         var rs = SendCommand(msg);
 
-        return rs?.Payload;
+        return rs;
     }
 
     /// <summary>发送消息并接收返回</summary>
@@ -217,12 +222,12 @@ public class FxLinks : DisposeBase
     /// <returns>线圈状态字节数组</returns>
     public Packet ReadBit(Byte host, String address, UInt16 count)
     {
-        using var span = Tracer?.NewSpan("fxlinks:ReadBit", $"host={host} address={address}/0x{address:X4} count={count}");
+        using var span = Tracer?.NewSpan("fxlinks:ReadBit", $"host={host} address={address} count={count}");
 
-        var rs = SendCommand("BR", host, address, count);
+        var rs = SendCommand("BR", host, address, count.GetBytes(false));
         if (rs == null) return null;
 
-        return rs.Slice(1);
+        return rs.Payload;
     }
 
     /// <summary>字单元读取，WR</summary>
@@ -232,12 +237,12 @@ public class FxLinks : DisposeBase
     /// <returns>输入状态字节数组</returns>
     public Packet ReadWord(Byte host, String address, UInt16 count)
     {
-        using var span = Tracer?.NewSpan("fxlinks:ReadDiscrete", $"host={host} address={address}/0x{address:X4} count={count}");
+        using var span = Tracer?.NewSpan("fxlinks:ReadDiscrete", $"host={host} address={address} count={count}");
 
-        var rs = SendCommand("WR", host, address, count);
+        var rs = SendCommand("WR", host, address, count.GetBytes(false));
         if (rs == null) return null;
 
-        return rs.Slice(1);
+        return rs.Payload;
     }
     #endregion
 
@@ -252,8 +257,8 @@ public class FxLinks : DisposeBase
     {
         switch (command)
         {
-            case "BW": return WriteBit(host, address, values[0]);
-            case "WW": return WriteWord(host, address, values[0]);
+            case "BW": return WriteBit(host, address, values);
+            case "WW": return WriteWord(host, address, values);
             default:
                 break;
         }
@@ -264,33 +269,48 @@ public class FxLinks : DisposeBase
     /// <summary>位单元写入，BW</summary>
     /// <param name="host">主机。一般是1</param>
     /// <param name="address">地址。例如0x0002</param>
-    /// <param name="value">输出值。一般是 0xFF00/0x0000</param>
+    /// <param name="values">输出值。一般是 0xFF00/0x0000</param>
     /// <returns>输出值</returns>
-    public Int32 WriteBit(Byte host, String address, UInt16 value)
+    public Int32 WriteBit(Byte host, String address, params UInt16[] values)
     {
-        using var span = Tracer?.NewSpan("fxlinks:WriteBit", $"host={host} address={address}/0x{address:X4} value=0x{value:X4}");
+        using var span = Tracer?.NewSpan("fxlinks:WriteBit", $"host={host} address={address} value=({values.Join(",")})");
 
-        var rs = SendCommand("BW", host, address, value);
-        if (rs == null || rs.Total < 4) return -1;
+        var buf = new Byte[2 + values.Length];
+        buf.Write((UInt16)values.Length, 0, false);
+        for (var i = 0; i < values.Length; i++)
+        {
+            buf[2 + i] = (Byte)(values[i] != 0 ? 1 : 0);
+        }
 
-        // 去掉2字节地址
-        return rs.ReadBytes(2, 2).ToUInt16(0, false);
+        var rs = SendCommand("BW", host, address, buf);
+        if (rs == null) return -1;
+        if (rs.Code != ControlCodes.ACK) return -1;
+
+        return 0;
     }
 
     /// <summary>字单元写入，WW</summary>
     /// <param name="host">主机。一般是1</param>
     /// <param name="address">地址。例如0x0002</param>
-    /// <param name="value">数值</param>
+    /// <param name="values">数值</param>
     /// <returns>寄存器值</returns>
-    public Int32 WriteWord(Byte host, String address, UInt16 value)
+    public Int32 WriteWord(Byte host, String address, params UInt16[] values)
     {
-        using var span = Tracer?.NewSpan("fxlinks:WriteWord", $"host={host} address={address}/0x{address:X4} value=0x{value:X4}");
+        using var span = Tracer?.NewSpan("fxlinks:WriteWord", $"host={host} address={address} value=({values.Join(",")})");
 
-        var rs = SendCommand("WW", host, address, value);
-        if (rs == null || rs.Total < 4) return -1;
+        var buf = new Byte[2 + values.Length * 2];
+        buf.Write((UInt16)values.Length, 0, false);
+        for (var i = 0; i < values.Length; i++)
+        {
+            buf[2 + i] = (Byte)(values[i] != 0 ? 1 : 0);
+            buf.Write(values[i], 2 + i * 2, false);
+        }
 
-        // 去掉2字节地址
-        return rs.ReadBytes(2, 2).ToUInt16(0, false);
+        var rs = SendCommand("WW", host, address, buf);
+        if (rs == null) return -1;
+        if (rs.Code != ControlCodes.ACK) return -1;
+
+        return 0;
     }
     #endregion
 

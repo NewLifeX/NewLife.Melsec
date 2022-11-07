@@ -1,8 +1,6 @@
 ﻿using System;
 using Moq;
 using NewLife;
-using NewLife.Data;
-using NewLife.IoT.Protocols;
 using NewLife.Melsec.Protocols;
 using Xunit;
 
@@ -18,9 +16,7 @@ public class FxLinksTests
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Command = e.Command,
-                Address = e.Address,
-                Payload = e.Payload?.Slice(0, 2).Append(e.Payload.Slice(2, 2))
+                Payload = "12-34-56-78".ToHex()
             });
 
         var link = mockFxLinks.Object;
@@ -32,49 +28,55 @@ public class FxLinksTests
         // 读取
         var rs = link.Read("BR", 1, "D202", 1);
         Assert.NotNull(rs);
-        Assert.Equal(0x0200, rs.ReadBytes().ToUInt16(0, false));
+        Assert.Equal(0x1234, rs.ReadUInt16(false));
 
         rs = link.Read("WR", 1, "D202", 2);
         Assert.NotNull(rs);
-        Assert.Equal(0x01020304u, rs.ReadBytes().ToUInt32(0, false));
+        Assert.Equal(0x12345678u, rs.ReadUInt32(false));
     }
 
     [Fact]
     public void ReadBit()
     {
         // 模拟FxLinks
-        var mb = new Mock<FxLinks>() { CallBase = true };
-        //mb.Setup(e => e.SendCommand(FunctionCodes.ReadCoil, 1, "D202", 2))
-        //    .Returns("02-12-34-56-78".ToHex());
+        var mockFxLinks = new Mock<FxLinks> { CallBase = true };
+        mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
+            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            {
+                Payload = "12-34".ToHex()
+            });
 
-        var link = mb.Object;
+        var link = mockFxLinks.Object;
 
-        //// 读取
-        //var rs = link.ReadCoil(1, 100, 2);
-        //Assert.NotNull(rs);
+        // 读取
+        var rs = link.ReadBit(1, "D01", 16);
+        Assert.NotNull(rs);
 
-        //var buf = rs.ReadBytes();
-        //Assert.Equal(2, buf.Length);
-        //Assert.Equal(0x1234, buf.ToUInt16(0, false));
+        var buf = rs.ReadBytes();
+        Assert.Equal(2, buf.Length);
+        Assert.Equal(0x1234, buf.ToUInt16(0, false));
     }
 
     [Fact]
     public void ReadWord()
     {
         // 模拟FxLinks
-        var mb = new Mock<FxLinks>() { CallBase = true };
-        //mb.Setup(e => e.SendCommand(FunctionCodes.ReadDiscrete, 1, "D202", 2))
-        //    .Returns("02-12-34-56-78".ToHex());
+        var mockFxLinks = new Mock<FxLinks> { CallBase = true };
+        mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
+            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            {
+                Payload = "12-34-56-78".ToHex()
+            });
 
-        var link = mb.Object;
+        var link = mockFxLinks.Object;
 
         // 读取
         var rs = link.ReadWord(1, "D202", 2);
         Assert.NotNull(rs);
 
         var buf = rs.ReadBytes();
-        Assert.Equal(2, buf.Length);
-        Assert.Equal(0x1234, buf.ToUInt16(0, false));
+        Assert.Equal(4, buf.Length);
+        Assert.Equal(0x12345678u, buf.ToUInt32(0, false));
     }
 
     [Fact]
@@ -85,9 +87,7 @@ public class FxLinksTests
         mb.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Host = e.Host,
-                Address = e.Address,
-                Payload = e.Payload.Slice(0, 2).Append("03-04".ToHex())
+                Code = ControlCodes.ACK,
             });
 
         var link = mb.Object;
@@ -98,7 +98,7 @@ public class FxLinksTests
 
         var rs = (Int32)link.Write("WW", 1, "D202", new UInt16[] { 1 });
         Assert.NotEqual(-1, rs);
-        Assert.Equal(0x0304, rs);
+        Assert.Equal(0, rs);
     }
 
     [Fact]
@@ -109,15 +109,14 @@ public class FxLinksTests
         mb.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Address = e.Address,
-                Payload = e.Payload.Slice(0, 4)
+                Code = ControlCodes.ACK,
             });
 
         var link = mb.Object;
 
         // 读取
         var rs = link.WriteBit(1, "D202", 0xFF00);
-        Assert.Equal(0xFF00, rs);
+        Assert.Equal(0, rs);
     }
 
     [Fact]
@@ -128,14 +127,13 @@ public class FxLinksTests
         mb.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Address = e.Address,
-                Payload = e.Payload.Slice(0, 2).Append(e.Payload.Slice(2, 2))
+                Code = ControlCodes.ACK,
             });
 
         var link = mb.Object;
 
         // 读取
         var rs = link.WriteWord(1, "D202", 0x1234);
-        Assert.Equal(0x1234, rs);
+        Assert.Equal(0, rs);
     }
 }
