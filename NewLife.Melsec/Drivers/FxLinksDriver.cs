@@ -127,9 +127,9 @@ public class FxLinksDriver : DriverBase
         foreach (var point in points)
         {
             var name = point.Name;
-            var addr = GetAddress(point);
+            //var addr = GetAddress(point);
             var length = point.Length;
-            var data = Link.Read("WR", n.Host, addr, (UInt16)(length / 2));
+            var data = Link.Read("WR", n.Host, point.Address, (UInt16)(length / 2));
 
             dic[name] = data;
         }
@@ -148,7 +148,7 @@ public class FxLinksDriver : DriverBase
     public override Object Write(INode node, IPoint point, Object value)
     {
         var n = node as MelsecNode;
-        var addr = GetAddress(point);
+        //var addr = GetAddress(point);
 
         UInt16[] vs;
         if (value is Byte[] buf)
@@ -169,7 +169,7 @@ public class FxLinksDriver : DriverBase
         // 加锁，避免冲突
         lock (Link)
         {
-            return Link.Write("WW", n.Host, addr, vs);
+            return Link.Write("WW", n.Host, point.Address, vs);
         }
     }
 

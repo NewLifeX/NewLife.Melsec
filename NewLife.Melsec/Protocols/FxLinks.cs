@@ -84,7 +84,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="value">数据值</param>
     /// <returns>返回响应消息的负载部分</returns>
-    public virtual Packet SendCommand(String command, Byte host, UInt16 address, UInt16 value)
+    public virtual Packet SendCommand(String command, Byte host, String address, UInt16 value)
     {
         var msg = new FxLinksMessage();
         //msg.Host = host;
@@ -197,7 +197,7 @@ public class FxLinks : DisposeBase
     /// <param name="count">个数。寄存器个数或线圈个数</param>
     /// <returns></returns>
     /// <exception cref="NotSupportedException"></exception>
-    public virtual Packet Read(String command, Byte host, UInt16 address, UInt16 count)
+    public virtual Packet Read(String command, Byte host, String address, UInt16 count)
     {
         switch (command)
         {
@@ -215,7 +215,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="count">线圈数量。一般要求8的倍数</param>
     /// <returns>线圈状态字节数组</returns>
-    public Packet ReadBit(Byte host, UInt16 address, UInt16 count)
+    public Packet ReadBit(Byte host, String address, UInt16 count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadBit", $"host={host} address={address}/0x{address:X4} count={count}");
 
@@ -230,7 +230,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="count">输入数量。一般要求8的倍数</param>
     /// <returns>输入状态字节数组</returns>
-    public Packet ReadWord(Byte host, UInt16 address, UInt16 count)
+    public Packet ReadWord(Byte host, String address, UInt16 count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadDiscrete", $"host={host} address={address}/0x{address:X4} count={count}");
 
@@ -248,7 +248,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">逻辑地址</param>
     /// <param name="values">待写入数值</param>
     /// <returns></returns>
-    public virtual Object Write(String command, Byte host, UInt16 address, UInt16[] values)
+    public virtual Object Write(String command, Byte host, String address, UInt16[] values)
     {
         switch (command)
         {
@@ -266,7 +266,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="value">输出值。一般是 0xFF00/0x0000</param>
     /// <returns>输出值</returns>
-    public Int32 WriteBit(Byte host, UInt16 address, UInt16 value)
+    public Int32 WriteBit(Byte host, String address, UInt16 value)
     {
         using var span = Tracer?.NewSpan("fxlinks:WriteBit", $"host={host} address={address}/0x{address:X4} value=0x{value:X4}");
 
@@ -282,7 +282,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="value">数值</param>
     /// <returns>寄存器值</returns>
-    public Int32 WriteWord(Byte host, UInt16 address, UInt16 value)
+    public Int32 WriteWord(Byte host, String address, UInt16 value)
     {
         using var span = Tracer?.NewSpan("fxlinks:WriteWord", $"host={host} address={address}/0x{address:X4} value=0x{value:X4}");
 
