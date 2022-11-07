@@ -43,10 +43,6 @@ public class FxLinksMessage : IAccessor
 
     /// <summary>校验和</summary>
     public Byte CheckSum2 { get; set; }
-
-    /// <summary>是否响应</summary>
-    [IgnoreDataMember]
-    public Boolean Reply { get; set; }
     #endregion
 
     #region 构造
@@ -91,6 +87,7 @@ public class FxLinksMessage : IAccessor
 
                     CheckSum = Convert.ToByte(hex[^2..], 16);
                     CheckSum2 = (Byte)hex.ToArray().Take(hex.Length - 2).Sum(e => e);
+
                     break;
                 }
 
@@ -113,7 +110,16 @@ public class FxLinksMessage : IAccessor
             case ControlCodes.ETX:
                 break;
             case ControlCodes.ACK:
-                break;
+                {
+                    // 05FF
+                    var hex = stream.ReadBytes(-1).ToStr();
+
+                    Host = Convert.ToByte(hex[..2], 16);
+                    PC = Convert.ToByte(hex[2..4], 16);
+
+                    break;
+                }
+
             default:
                 return false;
         }
@@ -127,7 +133,7 @@ public class FxLinksMessage : IAccessor
     /// <returns></returns>
     public static FxLinksMessage Read(Packet data, Boolean reply = false)
     {
-        var msg = new FxLinksMessage { Reply = reply };
+        var msg = new FxLinksMessage();
         if (msg.Read(data.GetStream(), null)) return msg;
 
         return null;
@@ -202,6 +208,21 @@ public class FxLinksMessage : IAccessor
 
             case ControlCodes.ETX:
                 break;
+
+            case ControlCodes.ACK:
+                {
+                    // 05FF
+                    var sb = new StringBuilder(64);
+
+                    sb.Append(Host.ToString("X2"));
+                    sb.Append(PC.ToString("X2"));
+
+                    var hex = sb.ToString();
+                    stream.Write(hex.GetBytes());
+
+                    break;
+                }
+
             default:
                 return false;
         }
@@ -225,11 +246,13 @@ public class FxLinksMessage : IAccessor
     /// <exception cref="InvalidOperationException"></exception>
     public virtual FxLinksMessage CreateReply()
     {
-        if (Reply) throw new InvalidOperationException();
+        //if (Reply) throw new InvalidOperationException();
 
         var msg = new FxLinksMessage
         {
-            Reply = true,
+            //Reply = true,
+            Host = Host,
+            PC = PC,
             Command = Command,
         };
 

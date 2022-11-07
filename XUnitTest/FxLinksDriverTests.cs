@@ -141,7 +141,6 @@ public class FxLinksDriverTests
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Reply = true,
                 Command = e.Command,
                 Address = e.Address,
                 Payload = e.Payload.Slice(0, 2).Append(e.Payload.Slice(2, 2))

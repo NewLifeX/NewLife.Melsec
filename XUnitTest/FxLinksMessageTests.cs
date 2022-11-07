@@ -25,7 +25,6 @@ public class FxLinksMessageTests
         Assert.Equal("01", msg.Payload.ToHex());
         Assert.Equal(0x32, msg.CheckSum);
         Assert.Equal(0x32, msg.CheckSum2);
-        Assert.False(msg.Reply);
         Assert.Equal("WR (D210, 01)", msg.ToString());
 
         var pk = msg.ToPacket();
@@ -51,7 +50,6 @@ public class FxLinksMessageTests
         Assert.Equal("0001", msg.Payload.ToHex());
         Assert.Equal(0xB5, msg.CheckSum);
         Assert.Equal(0xB5, msg.CheckSum2);
-        Assert.False(msg.Reply);
         Assert.Equal("STX (0001)", msg.ToString());
 
         var pk = msg.ToPacket();
@@ -77,12 +75,12 @@ public class FxLinksMessageTests
         Assert.Equal("010001", msg.Payload.ToHex());
         Assert.Equal(0xF8, msg.CheckSum);
         Assert.Equal(0xF8, msg.CheckSum2);
-        Assert.False(msg.Reply);
         Assert.Equal("WW (D210, 010001)", msg.ToString());
 
         var pk = msg.ToPacket();
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
     }
+
     [Fact]
     public void Test4()
     {
@@ -102,13 +100,11 @@ public class FxLinksMessageTests
         Assert.Null(msg.Payload);
         Assert.Equal(0, msg.CheckSum);
         Assert.Equal(0, msg.CheckSum2);
-        Assert.True(msg.Reply);
-        Assert.Equal("WR (D210, 01)", msg.ToString());
+        Assert.Equal("ACK ()", msg.ToString());
 
         var pk = msg.ToPacket();
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
     }
-
 
     [Fact]
     public void CreateReply()
@@ -116,7 +112,7 @@ public class FxLinksMessageTests
         var msg = new FxLinksMessage { Command = "WW" };
         var rs = msg.CreateReply();
 
-        Assert.True(rs.Reply);
+        //Assert.True(rs.Reply);
         Assert.Equal(msg.Command, rs.Command);
     }
 

@@ -18,7 +18,6 @@ public class FxLinksTests
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Reply = true,
                 Command = e.Command,
                 Address = e.Address,
                 Payload = e.Payload?.Slice(0, 2).Append(e.Payload.Slice(2, 2))
@@ -86,8 +85,7 @@ public class FxLinksTests
         mb.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Reply = true,
-                //Host = e.Host,
+                Host = e.Host,
                 Address = e.Address,
                 Payload = e.Payload.Slice(0, 2).Append("03-04".ToHex())
             });
@@ -111,7 +109,6 @@ public class FxLinksTests
         mb.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Reply = true,
                 Address = e.Address,
                 Payload = e.Payload.Slice(0, 4)
             });
@@ -131,7 +128,6 @@ public class FxLinksTests
         mb.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksMessage
             {
-                Reply = true,
                 Address = e.Address,
                 Payload = e.Payload.Slice(0, 2).Append(e.Payload.Slice(2, 2))
             });
