@@ -233,7 +233,7 @@ public class FxLinks : DisposeBase
     /// <returns>输入状态字节数组</returns>
     public Packet ReadWord(Byte host, String address, Byte count)
     {
-        using var span = Tracer?.NewSpan("fxlinks:ReadDiscrete", $"host={host} address={address} count={count}");
+        using var span = Tracer?.NewSpan("fxlinks:ReadWord", $"host={host} address={address} count={count}");
 
         var rs = SendCommand("WR", host, address, new[] { count });
         if (rs == null) return null;
