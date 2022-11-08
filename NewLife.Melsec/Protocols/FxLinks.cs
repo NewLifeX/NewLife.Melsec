@@ -3,9 +3,6 @@ using System.IO.Ports;
 using System.Runtime.CompilerServices;
 using NewLife.Data;
 using NewLife.Log;
-using NewLife.Serialization;
-using NewLife.Xml;
-using Newtonsoft.Json.Linq;
 
 [assembly: InternalsVisibleTo("XUnitTest, PublicKey=00240000048000001401000006020000002400005253413100080000010001000d41eb3bdab5c2150958b46c95632b7e4dcb0af77ed8637bd8543875bc2443d01273143bb46655a48a92efa76251adc63ccca6d0e9cef2e0ce93e32b5043bea179a6c710981be4a71703a03e10960643f7df091f499cf60183ef0e4e4e2eebf26e25cea0eebf87c8a6d7f8130c283fc3f747cb90623f0aaa619825e3fcd82f267a0f4bfd26c9f2a6b5a62a6b180b4f6d1d091fce6bd60a9aa9aa5b815b833b44e0f2e58b28a354cb20f52f31bb3b3a7c54f515426537e41f9c20c07e51f9cab8abc311daac19a41bd473a51c7386f014edf1863901a5c29addc89da2f2659c9c1e95affd6997396b9680e317c493e974a813186da277ff9c1d1b30e33cb5a2f6")]
 
@@ -68,7 +65,7 @@ public class FxLinks : DisposeBase
             p.Open();
             _port = p;
 
-            WriteLog("FxLinks.Open {0} Baudrate={1}", PortName, Baudrate);
+            WriteLog("FxLinks.Open {0} Baudrate={1} DataBits={2} Parity={3} StopBits={4}", PortName, Baudrate, p.DataBits, p.Parity, p.StopBits);
         }
     }
 
@@ -121,11 +118,11 @@ public class FxLinks : DisposeBase
 
             //var crc = ModbusHelper.Crc(buf, 0, buf.Length);
             //cmd.Append(crc.GetBytes(true));
-            buf = cmd.ToArray();
+            //buf = cmd.ToArray();
 
             using var span = Tracer?.NewSpan("fxlinks:SendCommand", buf.ToHex("-"));
 
-            Log?.Debug("{0}=> {1}", PortName, buf.ToHex("-"));
+            Log?.Debug("{0}=> {1} ({2})", PortName, buf.ToHex("-"), FxLinksMessage.GetHex(buf));
 
             _port.Write(buf, 0, buf.Length);
 
@@ -142,7 +139,7 @@ public class FxLinks : DisposeBase
             {
                 var count = _port.Read(buf, 0, buf.Length);
                 var pk = new Packet(buf, 0, count);
-                Log?.Debug("{0}<= {1}", PortName, pk.ToHex(32, "-"));
+                Log?.Debug("{0}<= {1} ({2})", PortName, pk.ToHex(32, "-"), FxLinksMessage.GetHex(pk.ReadBytes()));
 
                 if (span != null) span.Tag = pk.ToHex();
 
@@ -202,7 +199,7 @@ public class FxLinks : DisposeBase
     /// <param name="count">个数。寄存器个数或线圈个数</param>
     /// <returns></returns>
     /// <exception cref="NotSupportedException"></exception>
-    public virtual Packet Read(String command, Byte host, String address, UInt16 count)
+    public virtual Packet Read(String command, Byte host, String address, Byte count)
     {
         switch (command)
         {
@@ -220,11 +217,11 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="count">线圈数量。一般要求8的倍数</param>
     /// <returns>线圈状态字节数组</returns>
-    public Packet ReadBit(Byte host, String address, UInt16 count)
+    public Packet ReadBit(Byte host, String address, Byte count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadBit", $"host={host} address={address} count={count}");
 
-        var rs = SendCommand("BR", host, address, count.GetBytes(false));
+        var rs = SendCommand("BR", host, address, new[] { count });
         if (rs == null) return null;
 
         return rs.Payload;
@@ -235,11 +232,11 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="count">输入数量。一般要求8的倍数</param>
     /// <returns>输入状态字节数组</returns>
-    public Packet ReadWord(Byte host, String address, UInt16 count)
+    public Packet ReadWord(Byte host, String address, Byte count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadDiscrete", $"host={host} address={address} count={count}");
 
-        var rs = SendCommand("WR", host, address, count.GetBytes(false));
+        var rs = SendCommand("WR", host, address, new[] { count });
         if (rs == null) return null;
 
         return rs.Payload;

@@ -258,5 +258,33 @@ public class FxLinksMessage : IAccessor
 
         return msg;
     }
+
+    /// <summary>获取指令的HEX字符串形式</summary>
+    /// <param name="msg"></param>
+    /// <returns></returns>
+    public static String GetHex(Byte[] msg)
+    {
+        if (msg == null || msg.Length == 0) return null;
+
+        var str = msg.ToStr();
+
+        var sb = new StringBuilder();
+        for (var i = 0; i < str.Length; i++)
+        {
+            var ch = str[i];
+            if (ch == 0x02)
+                sb.Append("STX-");
+            else if (ch == 0x03)
+                sb.Append("-ETX-");
+            else if (ch == 0x05)
+                sb.Append("ENQ-");
+            else if (ch == 0x06)
+                sb.Append("ACK-");
+            else
+                sb.Append(ch);
+        }
+
+        return sb.ToString();
+    }
     #endregion
 }

@@ -1,7 +1,10 @@
 ﻿using System.IO.Ports;
 using NewLife;
 using NewLife.Data;
+using NewLife.IoT.Drivers;
+using NewLife.IoT.ThingModels;
 using NewLife.Log;
+using NewLife.Melsec.Drivers;
 
 XTrace.UseConsole();
 
@@ -37,36 +40,57 @@ XTrace.UseConsole();
 
 try
 {
-    var sp = new SerialPort("COM7", 9600)
+    var pts = "D202,D203,D200,D210,D212,D213";
+    var points = pts.Split(",").Select(e => new PointModel { Name = e, Address = e }).ToArray();
+
+    var p = new FxLinksParameter { PortName = "COM5", Baudrate = 9600, Host = 5 };
+    var driver = new FxLinksDriver
     {
-        DataBits = 7,
-        StopBits = StopBits.One,
-        Parity = Parity.Even,
-
-        ReadTimeout = 3000,
-        WriteTimeout = 3000
+        Log = XTrace.Log,
     };
-    sp.Open();
 
-    var str = "02 30 31 31 39 34 30 32 03 36 34";
-    var buf = str.ToHex();
-    //var buf = str.GetBytes();
+    var node = driver.Open(null, p);
 
-    XTrace.WriteLine("send {0}", buf.ToHex("-"));
+    var rs = driver.Read(node, points);
+    XTrace.WriteLine("rs={0}", rs.Count);
+    foreach (var item in rs)
+    {
+        var value = item.Value;
+        if (value is Byte[] buf) value = buf.ToUInt16(0, false);
 
-    sp.Write(buf, 0, buf.Length);
+        XTrace.WriteLine("{0}={1}", item.Key, value);
+    }
 
-    Thread.Sleep(50);
+    //var sp = new SerialPort("COM5", 9600)
+    //{
+    //    DataBits = 7,
+    //    StopBits = StopBits.One,
+    //    Parity = Parity.Even,
 
-    var count = sp.BytesToRead;
-    XTrace.WriteLine("count {0}", count);
+    //    ReadTimeout = 3000,
+    //    WriteTimeout = 3000
+    //};
+    //sp.Open();
 
-    var rs = new Byte[256];
-    count = sp.Read(rs, 0, rs.Length);
+    //var str = "02 30 31 31 39 34 30 32 03 36 34";
+    //var buf = str.ToHex();
+    ////var buf = str.GetBytes();
 
-    var pk = new Packet(rs, 0, count);
+    //XTrace.WriteLine("send {0}", buf.ToHex("-"));
 
-    XTrace.WriteLine("recv {0}", pk.ToHex(256, "-"));
+    //sp.Write(buf, 0, buf.Length);
+
+    //Thread.Sleep(50);
+
+    //var count = sp.BytesToRead;
+    //XTrace.WriteLine("count {0}", count);
+
+    //var rs = new Byte[256];
+    //count = sp.Read(rs, 0, rs.Length);
+
+    //var pk = new Packet(rs, 0, count);
+
+    //XTrace.WriteLine("recv {0}", pk.ToHex(256, "-"));
 }
 catch (Exception ex)
 {

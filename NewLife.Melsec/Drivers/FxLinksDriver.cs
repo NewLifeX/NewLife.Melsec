@@ -3,6 +3,7 @@ using NewLife.IoT;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
 using NewLife.IoT.ThingSpecification;
+using NewLife.Log;
 using NewLife.Melsec.Protocols;
 using NewLife.Reflection;
 using NewLife.Serialization;
@@ -68,6 +69,7 @@ public class FxLinksDriver : DriverBase
         var node = new MelsecNode
         {
             Address = p.PortName,
+            Host = p.Host,
 
             Driver = this,
             Device = device,
@@ -81,8 +83,18 @@ public class FxLinksDriver : DriverBase
             {
                 if (Link == null)
                 {
-                    var link = new FxLinks();
+                    var link = new FxLinks
+                    {
+                        PortName = p.PortName,
+                        Baudrate = p.Baudrate,
+
+                        Log = Log,
+                        Tracer = Tracer,
+                    };
+
                     if (p.Timeout > 0) link.Timeout = p.Timeout;
+
+                    //if (Log != null && Log.Level <= LogLevel.Debug) link.Log = Log;
 
                     // 外部已指定通道时，打开连接
                     if (device != null) link.Open();
