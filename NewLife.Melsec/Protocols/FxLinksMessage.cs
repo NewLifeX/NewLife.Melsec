@@ -94,13 +94,21 @@ public class FxLinksMessage : IAccessor
             case ControlCodes.STX:
                 {
                     // 05FF0001\03B5
+                    // STX-05FF0-ETX-24
                     var hex = stream.ReadBytes(-1).ToStr();
 
                     Host = Convert.ToByte(hex[..2], 16);
                     PC = Convert.ToByte(hex[2..4], 16);
 
                     var len = hex.Length - 4 - 3;
-                    if (len > 0) Payload = hex.Substring(4, len).ToHex();
+                    if (len > 0)
+                    {
+                        var str = hex.Substring(4, len);
+                        if (len == 1)
+                            Payload = new Byte[] { Convert.ToByte(str, 16) };
+                        else
+                            Payload = str.ToHex();
+                    }
 
                     CheckSum = Convert.ToByte(hex[^2..], 16);
                     CheckSum2 = (Byte)hex.ToArray().Take(hex.Length - 2).Sum(e => e);
@@ -188,7 +196,13 @@ public class FxLinksMessage : IAccessor
                     sb.Append(PC.ToString("X2"));
 
                     var pk = Payload;
-                    if (pk != null && pk.Total > 0) sb.Append(pk.ToHex(256));
+                    if (pk != null && pk.Total > 0)
+                    {
+                        if (pk.Total == 1)
+                            sb.Append(pk[0].ToString("X"));
+                        else
+                            sb.Append(pk.ToHex(256));
+                    }
 
                     sb.Append((Char)ControlCodes.ETX);
 

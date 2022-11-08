@@ -7,7 +7,7 @@ namespace XUnitTest;
 public class FxLinksMessageTests
 {
     [Fact]
-    public void Test1()
+    public void ReadWord()
     {
         // 05FFWR0D02100132
         var str = "05 30 35 46 46 57 52 30 44 30 32 31 30 30 31 33 32";
@@ -32,7 +32,7 @@ public class FxLinksMessageTests
     }
 
     [Fact]
-    public void Test2()
+    public void ResponseOfReadWord()
     {
         // 05FF0001\03B5
         var str = "02 30 35 46 46 30 30 30 31 03 42 35";
@@ -57,7 +57,7 @@ public class FxLinksMessageTests
     }
 
     [Fact]
-    public void Test3()
+    public void WriteWord()
     {
         // 05FFWW0D0210010001F8
         var str = "05 30 35 46 46 57 57 30 44 30 32 31 30 30 31 30 30 30 31 46 38";
@@ -82,7 +82,7 @@ public class FxLinksMessageTests
     }
 
     [Fact]
-    public void Test4()
+    public void ResponseOfWriteWord()
     {
         // 05FF
         var str = "06 30 35 46 46";
@@ -101,6 +101,31 @@ public class FxLinksMessageTests
         Assert.Equal(0, msg.CheckSum);
         Assert.Equal(0, msg.CheckSum2);
         Assert.Equal("ACK ()", msg.ToString());
+
+        var pk = msg.ToPacket();
+        Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
+    }
+
+    [Fact]
+    public void ResponseOfReadBit()
+    {
+        // STX-05FF0-ETX-24
+        var str = "02-30-35-46-46-30-03-32-34";
+        var dt = str.ToHex();
+
+        var msg = FxLinksMessage.Read(dt, false);
+        Assert.NotNull(msg);
+
+        Assert.Equal(ControlCodes.STX, msg.Code);
+        Assert.Equal(5, msg.Host);
+        Assert.Equal(0xFF, msg.PC);
+        Assert.Null(msg.Command);
+        Assert.Equal(0, msg.Wait);
+        Assert.Null(msg.Address);
+        Assert.Equal("00", msg.Payload.ToHex());
+        Assert.Equal(0x24, msg.CheckSum);
+        Assert.Equal(0x24, msg.CheckSum2);
+        Assert.Equal("STX (00)", msg.ToString());
 
         var pk = msg.ToPacket();
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));

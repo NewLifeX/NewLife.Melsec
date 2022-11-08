@@ -40,7 +40,7 @@ XTrace.UseConsole();
 
 try
 {
-    var pts = "D202,D203,D200,D210,D212,D213";
+    var pts = "Y0,Y1,D202,D203,D200,D210,D212,D213,X3,X4,M100,M101";
     var points = pts.Split(",").Select(e => new PointModel { Name = e, Address = e }).ToArray();
 
     var p = new FxLinksParameter { PortName = "COM5", Baudrate = 9600, Host = 5 };
@@ -56,7 +56,13 @@ try
     foreach (var item in rs)
     {
         var value = item.Value;
-        if (value is Byte[] buf) value = buf.ToUInt16(0, false);
+        if (value is Byte[] buf)
+        {
+            if (buf.Length == 1)
+                value = buf[0];
+            else
+                value = buf.ToUInt16(0, false);
+        }
 
         XTrace.WriteLine("{0}={1}", item.Key, value);
     }

@@ -139,11 +139,16 @@ public class FxLinksDriver : DriverBase
         foreach (var point in points)
         {
             var name = point.Name;
-            var type = point.GetNetType();
-            if (type == typeof(Boolean) || type == typeof(Byte))
+            if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
                 dic[name] = Link.ReadBit(n.Host, point.Address, 1)?.ReadBytes();
             else
-                dic[name] = Link.ReadWord(n.Host, point.Address, 1)?.ReadBytes();
+            {
+                var type = point.GetNetType();
+                if (type == typeof(Boolean) || type == typeof(Byte))
+                    dic[name] = Link.ReadBit(n.Host, point.Address, 1)?.ReadBytes();
+                else
+                    dic[name] = Link.ReadWord(n.Host, point.Address, 1)?.ReadBytes();
+            }
         }
 
         return dic;
