@@ -1,4 +1,6 @@
-﻿using NewLife;
+﻿using System.IO;
+using NewLife;
+using NewLife.Data;
 using NewLife.Melsec.Protocols;
 using Xunit;
 
@@ -13,8 +15,9 @@ public class FxLinksMessageTests
         var str = "05 30 35 46 46 57 52 30 44 30 32 31 30 30 31 33 32";
         var dt = str.ToHex();
 
-        var msg = FxLinksMessage.Read(dt, false);
-        Assert.NotNull(msg);
+        var msg = new FxLinksMessage();
+        var rs = msg.Read(new MemoryStream(dt), null);
+        Assert.True(rs);
 
         Assert.Equal(ControlCodes.ENQ, msg.Code);
         Assert.Equal(5, msg.Host);
@@ -38,8 +41,9 @@ public class FxLinksMessageTests
         var str = "02 30 35 46 46 30 30 30 31 03 42 35";
         var dt = str.ToHex();
 
-        var msg = FxLinksMessage.Read(dt, false);
-        Assert.NotNull(msg);
+        var msg = new FxLinksMessage();
+        var rs = msg.Read(new MemoryStream(dt), null);
+        Assert.True(rs);
 
         Assert.Equal(ControlCodes.STX, msg.Code);
         Assert.Equal(5, msg.Host);
@@ -63,8 +67,9 @@ public class FxLinksMessageTests
         var str = "05 30 35 46 46 57 57 30 44 30 32 31 30 30 31 30 30 30 31 46 38";
         var dt = str.ToHex();
 
-        var msg = FxLinksMessage.Read(dt, false);
-        Assert.NotNull(msg);
+        var msg = new FxLinksMessage();
+        var rs = msg.Read(new MemoryStream(dt), null);
+        Assert.True(rs);
 
         Assert.Equal(ControlCodes.ENQ, msg.Code);
         Assert.Equal(5, msg.Host);
@@ -88,8 +93,9 @@ public class FxLinksMessageTests
         var str = "06 30 35 46 46";
         var dt = str.ToHex();
 
-        var msg = FxLinksMessage.Read(dt, false);
-        Assert.NotNull(msg);
+        var msg = new FxLinksMessage();
+        var rs = msg.Read(new MemoryStream(dt), null);
+        Assert.True(rs);
 
         Assert.Equal(ControlCodes.ACK, msg.Code);
         Assert.Equal(5, msg.Host);
@@ -113,8 +119,9 @@ public class FxLinksMessageTests
         var str = "02-30-35-46-46-30-03-32-34";
         var dt = str.ToHex();
 
-        var msg = FxLinksMessage.Read(dt, false);
-        Assert.NotNull(msg);
+        var msg = new FxLinksMessage();
+        var rs = msg.Read(new MemoryStream(dt), null);
+        Assert.True(rs);
 
         Assert.Equal(ControlCodes.STX, msg.Code);
         Assert.Equal(5, msg.Host);

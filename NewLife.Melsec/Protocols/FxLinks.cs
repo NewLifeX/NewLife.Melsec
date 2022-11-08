@@ -147,8 +147,8 @@ public class FxLinks : DisposeBase
                 var len = pk.Total - 2;
                 if (len < 2) return null;
 
-                var rs = FxLinksMessage.Read(pk, true);
-                if (rs == null) return null;
+                var rs = new FxLinksMessage { Command = message.Command };
+                if (!rs.Read(pk.GetStream(), null)) return null;
 
                 // 校验
                 if (rs.CheckSum != rs.CheckSum2) WriteLog("CheckSum Error {0:X2}!={1:X2} !", rs.CheckSum, rs.CheckSum2);

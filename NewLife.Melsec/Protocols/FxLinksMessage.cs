@@ -106,6 +106,8 @@ public class FxLinksMessage : IAccessor
                         var str = hex.Substring(4, len);
                         if (len == 1)
                             Payload = new Byte[] { Convert.ToByte(str, 16) };
+                        else if (Command == "BR")
+                            Payload = str.ToArray().Select(e => Convert.ToByte(e + "", 16)).ToArray();
                         else
                             Payload = str.ToHex();
                     }
@@ -135,17 +137,17 @@ public class FxLinksMessage : IAccessor
         return true;
     }
 
-    /// <summary>解析消息</summary>
-    /// <param name="data">数据包</param>
-    /// <param name="reply">是否响应</param>
-    /// <returns></returns>
-    public static FxLinksMessage Read(Packet data, Boolean reply = false)
-    {
-        var msg = new FxLinksMessage();
-        if (msg.Read(data.GetStream(), null)) return msg;
+    ///// <summary>解析消息</summary>
+    ///// <param name="data">数据包</param>
+    ///// <param name="reply">是否响应</param>
+    ///// <returns></returns>
+    //public static FxLinksMessage Read(Packet data, Boolean reply = false)
+    //{
+    //    var msg = new FxLinksMessage();
+    //    if (msg.Read(data.GetStream(), null)) return msg;
 
-        return null;
-    }
+    //    return null;
+    //}
 
     /// <summary>写入消息到数据流</summary>
     /// <param name="stream">数据流</param>
@@ -200,6 +202,14 @@ public class FxLinksMessage : IAccessor
                     {
                         if (pk.Total == 1)
                             sb.Append(pk[0].ToString("X"));
+                        else if (Command == "BR")
+                        {
+                            var buf = pk.ReadBytes();
+                            for (var i = 0; i < buf.Length; i++)
+                            {
+                                sb.Append(Convert.ToString(buf[i], 16));
+                            }
+                        }
                         else
                             sb.Append(pk.ToHex(256));
                     }
