@@ -22,6 +22,15 @@ public class FxLinks : DisposeBase
     /// <summary>波特率</summary>
     public Int32 Baudrate { get; set; } = 9600;
 
+    /// <summary>数据位长度。默认7</summary>
+    public Int32 DataBits { get; set; } = 7;
+
+    /// <summary>奇偶校验位。默认Even偶校验</summary>
+    public Parity Parity { get; set; } = Parity.Even;
+
+    /// <summary>停止位。默认One</summary>
+    public StopBits StopBits { get; set; } = StopBits.One;
+
     /// <summary>缓冲区大小。默认256</summary>
     public Int32 BufferSize { get; set; } = 256;
 
@@ -56,13 +65,16 @@ public class FxLinks : DisposeBase
         {
             var p = new SerialPort(PortName, Baudrate)
             {
-                DataBits = 7,
-                Parity = Parity.Even,
-                StopBits = StopBits.One,
+                DataBits = DataBits,
+                Parity = Parity,
+                StopBits = StopBits,
 
                 ReadTimeout = Timeout,
                 WriteTimeout = Timeout
             };
+            //if (DataBits > 0) p.DataBits = DataBits;
+            //if (Parity > 0) p.Parity = Parity;
+            //if (StopBits > 0) p.StopBits = StopBits;
             p.Open();
             _port = p;
 

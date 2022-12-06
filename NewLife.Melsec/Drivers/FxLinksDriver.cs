@@ -87,6 +87,9 @@ public class FxLinksDriver : DriverBase
                     {
                         PortName = p.PortName,
                         Baudrate = p.Baudrate,
+                        DataBits = p.DataBits,
+                        Parity = p.Parity,
+                        StopBits = p.StopBits,
 
                         Log = Log,
                         Tracer = Tracer,
