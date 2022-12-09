@@ -3,7 +3,6 @@ using NewLife.IoT;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
 using NewLife.IoT.ThingSpecification;
-using NewLife.Log;
 using NewLife.Melsec.Protocols;
 using NewLife.Reflection;
 using NewLife.Serialization;
