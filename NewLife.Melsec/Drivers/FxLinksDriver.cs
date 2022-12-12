@@ -140,16 +140,26 @@ public class FxLinksDriver : DriverBase
 
         foreach (var point in points)
         {
-            var name = point.Name;
-            if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
-                dic[name] = Link.ReadBit(n.Host, point.Address, 1)?.ReadBytes();
-            else
+            if (point.Address.IsNullOrEmpty()) continue;
+
+            // 其中一项读取报错时，直接跳过，不要影响其它批次
+            try
             {
-                var type = point.GetNetType();
-                if (type == typeof(Boolean) || type == typeof(Byte))
+                var name = point.Name;
+                if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
                     dic[name] = Link.ReadBit(n.Host, point.Address, 1)?.ReadBytes();
                 else
-                    dic[name] = Link.ReadWord(n.Host, point.Address, 1)?.ReadBytes();
+                {
+                    var type = point.GetNetType();
+                    if (type == typeof(Boolean) || type == typeof(Byte))
+                        dic[name] = Link.ReadBit(n.Host, point.Address, 1)?.ReadBytes();
+                    else
+                        dic[name] = Link.ReadWord(n.Host, point.Address, 1)?.ReadBytes();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log?.Error(ex.ToString());
             }
         }
 

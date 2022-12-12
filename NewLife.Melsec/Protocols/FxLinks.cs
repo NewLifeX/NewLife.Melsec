@@ -231,11 +231,18 @@ public class FxLinks : DisposeBase
     public Packet ReadBit(Byte host, String address, Byte count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadBit", $"host={host} address={address} count={count}");
+        try
+        {
+            var rs = SendCommand("BR", host, address, new[] { count });
+            if (rs == null) return null;
 
-        var rs = SendCommand("BR", host, address, new[] { count });
-        if (rs == null) return null;
-
-        return rs.Payload;
+            return rs.Payload;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>字单元读取，WR</summary>
@@ -246,11 +253,18 @@ public class FxLinks : DisposeBase
     public Packet ReadWord(Byte host, String address, Byte count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadWord", $"host={host} address={address} count={count}");
+        try
+        {
+            var rs = SendCommand("WR", host, address, new[] { count });
+            if (rs == null) return null;
 
-        var rs = SendCommand("WR", host, address, new[] { count });
-        if (rs == null) return null;
-
-        return rs.Payload;
+            return rs.Payload;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
     #endregion
 
@@ -282,19 +296,26 @@ public class FxLinks : DisposeBase
     public Int32 WriteBit(Byte host, String address, params UInt16[] values)
     {
         using var span = Tracer?.NewSpan("fxlinks:WriteBit", $"host={host} address={address} value=({values.Join(",")})");
-
-        var buf = new Byte[2 + values.Length];
-        buf.Write((UInt16)values.Length, 0, false);
-        for (var i = 0; i < values.Length; i++)
+        try
         {
-            buf[2 + i] = (Byte)(values[i] != 0 ? 1 : 0);
+            var buf = new Byte[2 + values.Length];
+            buf.Write((UInt16)values.Length, 0, false);
+            for (var i = 0; i < values.Length; i++)
+            {
+                buf[2 + i] = (Byte)(values[i] != 0 ? 1 : 0);
+            }
+
+            var rs = SendCommand("BW", host, address, buf);
+            if (rs == null) return -1;
+            if (rs.Code != ControlCodes.ACK) return -1;
+
+            return 0;
         }
-
-        var rs = SendCommand("BW", host, address, buf);
-        if (rs == null) return -1;
-        if (rs.Code != ControlCodes.ACK) return -1;
-
-        return 0;
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>字单元写入，WW</summary>
@@ -305,20 +326,27 @@ public class FxLinks : DisposeBase
     public Int32 WriteWord(Byte host, String address, params UInt16[] values)
     {
         using var span = Tracer?.NewSpan("fxlinks:WriteWord", $"host={host} address={address} value=({values.Join(",")})");
-
-        var buf = new Byte[2 + values.Length * 2];
-        buf.Write((UInt16)values.Length, 0, false);
-        for (var i = 0; i < values.Length; i++)
+        try
         {
-            buf[2 + i] = (Byte)(values[i] != 0 ? 1 : 0);
-            buf.Write(values[i], 2 + i * 2, false);
+            var buf = new Byte[2 + values.Length * 2];
+            buf.Write((UInt16)values.Length, 0, false);
+            for (var i = 0; i < values.Length; i++)
+            {
+                buf[2 + i] = (Byte)(values[i] != 0 ? 1 : 0);
+                buf.Write(values[i], 2 + i * 2, false);
+            }
+
+            var rs = SendCommand("WW", host, address, buf);
+            if (rs == null) return -1;
+            if (rs.Code != ControlCodes.ACK) return -1;
+
+            return 0;
         }
-
-        var rs = SendCommand("WW", host, address, buf);
-        if (rs == null) return -1;
-        if (rs.Code != ControlCodes.ACK) return -1;
-
-        return 0;
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
     #endregion
 
