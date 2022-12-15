@@ -112,7 +112,7 @@ public class FxLinksMessage : IAccessor
                             Payload = str.ToHex();
                     }
 
-                    CheckSum = Convert.ToByte(hex[^2..], 16);
+                    //CheckSum = Convert.ToByte(hex[^2..], 16);
                     CheckSum2 = (Byte)hex.ToArray().Take(hex.Length - 2).Sum(e => e);
                     break;
                 }

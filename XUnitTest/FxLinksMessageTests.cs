@@ -91,7 +91,7 @@ public class FxLinksMessageTests
     public void ResponseOfWriteBit()
     {
         // 05FF0
-        var str = "023035464630033275";
+        var str = "02-30-35-7F-5E-77-6C-23-7F";
         var dt = str.ToHex();
         var str2 = dt.ReadBytes(1).ToStr();
 
@@ -152,6 +152,113 @@ public class FxLinksMessageTests
         Assert.True(rs);
 
         Assert.Equal(ControlCodes.ACK, msg.Code);
+        Assert.Equal(5, msg.Host);
+        Assert.Equal(0xFF, msg.PC);
+        Assert.Null(msg.Command);
+        Assert.Equal(0, msg.Wait);
+        Assert.Null(msg.Address);
+        Assert.Null(msg.Payload);
+        Assert.Equal(0, msg.CheckSum);
+        Assert.Equal(0, msg.CheckSum2);
+        Assert.Equal("ACK ()", msg.ToString());
+
+        var pk = msg.ToPacket();
+        Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
+    }
+
+    [Fact]
+    public void WriteWord2()
+    {
+        // 05FFWW0D0240000100015B
+        var str = "05-30-35-46-46-57-57-30-44-30-32-34-30-30-30-30-31-30-30-30-31-35-42";
+        var dt = str.ToHex();
+
+        var msg = new FxLinksMessage();
+        var rs = msg.Read(new MemoryStream(dt), null);
+        Assert.True(rs);
+
+        Assert.Equal(ControlCodes.ENQ, msg.Code);
+        Assert.Equal(5, msg.Host);
+        Assert.Equal(0xFF, msg.PC);
+        Assert.Equal("WW", msg.Command);
+        Assert.Equal(0, msg.Wait);
+        Assert.Equal("D240", msg.Address);
+        Assert.Equal("00010001", msg.Payload.ToHex());
+        Assert.Equal(0x5B, msg.CheckSum);
+        Assert.Equal(0x5B, msg.CheckSum2);
+        Assert.Equal("WW (D240, 00010001)", msg.ToString());
+
+        var pk = msg.ToPacket();
+        Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
+    }
+
+    [Fact]
+    public void ResponseOfWriteWord2()
+    {
+        // 05FF0002
+        var str = "02-30-35-46-46-30-30-30-32-23-5F-7F";
+        var dt = str.ToHex();
+        var v = dt.ReadBytes(1, -1).ToStr();
+
+        var msg = new FxLinksMessage();
+        var rs = msg.Read(new MemoryStream(dt), null);
+        Assert.True(rs);
+
+        Assert.Equal(ControlCodes.STX, msg.Code);
+        Assert.Equal(5, msg.Host);
+        Assert.Equal(0xFF, msg.PC);
+        Assert.Null(msg.Command);
+        Assert.Equal(0, msg.Wait);
+        Assert.Null(msg.Address);
+        Assert.Equal("0002", msg.Payload.ToHex());
+        Assert.Equal(0, msg.CheckSum);
+        Assert.Equal(0, msg.CheckSum2);
+        Assert.Equal("ACK ()", msg.ToString());
+
+        var pk = msg.ToPacket();
+        Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
+    }
+
+    [Fact]
+    public void WriteWord3()
+    {
+        // 05FFWW0D02120001003C6F
+        var str = "05-30-35-46-46-57-57-30-44-30-32-31-32-30-30-30-31-30-30-33-43-36-46";
+        var dt = str.ToHex();
+        var v = dt.ReadBytes(1, -1).ToStr();
+
+        var msg = new FxLinksMessage();
+        var rs = msg.Read(new MemoryStream(dt), null);
+        Assert.True(rs);
+
+        Assert.Equal(ControlCodes.ENQ, msg.Code);
+        Assert.Equal(5, msg.Host);
+        Assert.Equal(0xFF, msg.PC);
+        Assert.Equal("WW", msg.Command);
+        Assert.Equal(0, msg.Wait);
+        Assert.Equal("D212", msg.Address);
+        Assert.Equal("0001003C", msg.Payload.ToHex());
+        Assert.Equal(0x6F, msg.CheckSum);
+        Assert.Equal(0x6F, msg.CheckSum2);
+        Assert.Equal("WW (D212, 0001003C)", msg.ToString());
+
+        var pk = msg.ToPacket();
+        Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
+    }
+
+    [Fact]
+    public void ResponseOfWriteWord3()
+    {
+        // 05FF0
+        var str = "02-30-35-46-46-30-5F-7D";
+        var dt = str.ToHex();
+        var v = dt.ReadBytes(1, -1).ToStr();
+
+        var msg = new FxLinksMessage();
+        var rs = msg.Read(new MemoryStream(dt), null);
+        Assert.True(rs);
+
+        Assert.Equal(ControlCodes.STX, msg.Code);
         Assert.Equal(5, msg.Host);
         Assert.Equal(0xFF, msg.PC);
         Assert.Null(msg.Command);
