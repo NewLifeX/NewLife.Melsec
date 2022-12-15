@@ -45,7 +45,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.IoT" Version="1.7.2022.1209-beta0038" />
+    <PackageReference Include="NewLife.IoT" Version="1.7.2022.1213-beta0753" />
     <PackageReference Include="System.IO.Ports" Version="6.0.0" />
   </ItemGroup>
 

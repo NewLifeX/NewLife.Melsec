@@ -123,60 +123,56 @@ public class FxLinks : DisposeBase
         // 清空缓冲区
         _port.DiscardInBuffer();
 
-        {
-            Log?.Debug("=> {0}", message);
+        Log?.Debug("=> {0}", message);
 
-            var cmd = message.ToPacket();
-            var buf = cmd.ToArray();
+        var cmd = message.ToPacket();
+        var buf = cmd.ToArray();
 
-            //var crc = ModbusHelper.Crc(buf, 0, buf.Length);
-            //cmd.Append(crc.GetBytes(true));
-            //buf = cmd.ToArray();
+        //var crc = ModbusHelper.Crc(buf, 0, buf.Length);
+        //cmd.Append(crc.GetBytes(true));
+        //buf = cmd.ToArray();
 
-            using var span = Tracer?.NewSpan("fxlinks:SendCommand", buf.ToHex("-"));
+        using var span = Tracer?.NewSpan("fxlinks:SendCommand", buf.ToHex("-"));
 
-            Log?.Debug("{0}=> {1} ({2})", PortName, buf.ToHex("-"), FxLinksMessage.GetHex(buf));
+        Log?.Debug("{0}=> {1} ({2})", PortName, buf.ToHex("-"), FxLinksMessage.GetHex(buf));
 
-            _port.Write(buf, 0, buf.Length);
+        _port.Write(buf, 0, buf.Length);
 
-            //Thread.Sleep(ByteTimeout);
-        }
+        //Thread.Sleep(ByteTimeout);
 
         // 串口速度较慢，等待收完数据
         WaitMore(_port, 1 + 1 + 2);
 
+        //using var span = Tracer?.NewSpan("fxlinks:ReceiveCommand");
+        buf = new Byte[BufferSize];
+        try
         {
-            using var span = Tracer?.NewSpan("fxlinks:ReceiveCommand");
-            var buf = new Byte[BufferSize];
-            try
-            {
-                var count = _port.Read(buf, 0, buf.Length);
-                var pk = new Packet(buf, 0, count);
-                Log?.Debug("{0}<= {1} ({2})", PortName, pk.ToHex(32, "-"), FxLinksMessage.GetHex(pk.ReadBytes()));
+            var count = _port.Read(buf, 0, buf.Length);
+            var pk = new Packet(buf, 0, count);
+            Log?.Debug("{0}<= {1} ({2})", PortName, pk.ToHex(32, "-"), FxLinksMessage.GetHex(pk.ReadBytes()));
 
-                if (span != null) span.Tag = pk.ToHex();
+            if (span != null) span.Tag += Environment.NewLine + pk.ToHex(64, "-");
 
-                var len = pk.Total - 2;
-                if (len < 2) return null;
+            var len = pk.Total - 2;
+            if (len < 2) return null;
 
-                var rs = new FxLinksMessage { Command = message.Command };
-                if (!rs.Read(pk.GetStream(), null)) return null;
+            var rs = new FxLinksMessage { Command = message.Command };
+            if (!rs.Read(pk.GetStream(), null)) return null;
 
-                // 校验
-                if (rs.CheckSum != rs.CheckSum2) WriteLog("CheckSum Error {0:X2}!={1:X2} !", rs.CheckSum, rs.CheckSum2);
+            // 校验
+            if (rs.CheckSum != rs.CheckSum2) WriteLog("CheckSum Error {0:X2}!={1:X2} !", rs.CheckSum, rs.CheckSum2);
 
-                Log?.Debug("<= {0}", rs);
+            Log?.Debug("<= {0}", rs);
 
-                // 检查功能码
-                //return rs.ErrorCode > 0 ? throw new ModbusException(rs.ErrorCode, rs.ErrorCode + "") : (ModbusMessage)rs;
-                return rs;
-            }
-            catch (Exception ex)
-            {
-                span?.SetError(ex, null);
-                if (ex is TimeoutException) return null;
-                throw;
-            }
+            // 检查功能码
+            //return rs.ErrorCode > 0 ? throw new ModbusException(rs.ErrorCode, rs.ErrorCode + "") : (ModbusMessage)rs;
+            return rs;
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            if (ex is TimeoutException) return null;
+            throw;
         }
     }
 
