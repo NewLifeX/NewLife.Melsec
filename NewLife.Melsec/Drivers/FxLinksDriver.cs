@@ -145,17 +145,14 @@ public class FxLinksDriver : DriverBase
             // 其中一项读取报错时，直接跳过，不要影响其它批次
             try
             {
+                // 根据点位地址类型，使用不同操作，尽管字读取也可以用来读取位存储区，但很容易混淆，并且不好解析，因此不支持
                 var name = point.Name;
                 if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
                     dic[name] = Link.ReadBit(n.Host, point.Address, 1);
+                else if (point.Address.StartsWithIgnoreCase("D"))
+                    dic[name] = Link.ReadWord(n.Host, point.Address, 1)?.FirstOrDefault();
                 else
-                {
-                    var type = point.GetNetType();
-                    if (type == typeof(Boolean) || type == typeof(Byte))
-                        dic[name] = Link.ReadBit(n.Host, point.Address, 1)?.FirstOrDefault();
-                    else
-                        dic[name] = Link.ReadWord(n.Host, point.Address, 1)?.FirstOrDefault();
-                }
+                    dic[name] = Link.Read(point.Address[..1], n.Host, point.Address, 1);
             }
             catch (Exception ex)
             {
@@ -197,11 +194,14 @@ public class FxLinksDriver : DriverBase
         // 加锁，避免冲突
         lock (Link)
         {
-            var type = point.GetNetType();
-            if (type == typeof(Boolean) || type == typeof(Byte))
+            // 按照点位地址前缀决定使用哪一种写入方法，要求物模型必须配置对点位
+            var name = point.Name;
+            if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
                 return Link.WriteBit(n.Host, point.Address, vs);
-            else
+            else if (point.Address.StartsWithIgnoreCase("D"))
                 return Link.WriteWord(n.Host, point.Address, vs);
+            else
+                return Link.Write(point.Address[..1], n.Host, point.Address, vs);
         }
     }
 
