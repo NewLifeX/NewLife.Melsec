@@ -4,6 +4,7 @@ using NewLife.IoT;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
 using NewLife.IoT.ThingSpecification;
+using NewLife.Log;
 using NewLife.Melsec.Protocols;
 using NewLife.Reflection;
 using NewLife.Serialization;
@@ -302,6 +303,9 @@ public class FxLinksDriver : DriverBase
     /// <exception cref="ArgumentException"></exception>
     public override Object Write(INode node, IPoint point, Object value)
     {
+        if (value == null) return null;
+        if (point.Address.IsNullOrEmpty()) return null;
+
         var n = node as MelsecNode;
 
         UInt16[] vs;
@@ -315,7 +319,10 @@ public class FxLinksDriver : DriverBase
         }
         else
         {
-            vs = ConvertToRegister(value, point, n.Device?.Specification);
+            if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
+                vs = ConvertToBit(value, point, n.Device?.Specification);
+            else
+                vs = ConvertToWord(value, point, n.Device?.Specification);
 
             if (vs == null) throw new NotSupportedException($"点位[{point.Name}]不支持数据[{value}]");
         }
@@ -324,7 +331,6 @@ public class FxLinksDriver : DriverBase
         lock (Link)
         {
             // 按照点位地址前缀决定使用哪一种写入方法，要求物模型必须配置对点位
-            var name = point.Name;
             if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
                 return Link.WriteBit(n.Host, point.Address, vs);
             else if (point.Address.StartsWithIgnoreCase("D"))
@@ -334,35 +340,67 @@ public class FxLinksDriver : DriverBase
         }
     }
 
+    /// <summary>原始数据转为线圈</summary>
+    /// <param name="data"></param>
+    /// <param name="point"></param>
+    /// <param name="spec"></param>
+    /// <returns></returns>
+    protected virtual UInt16[] ConvertToBit(Object data, IPoint point, ThingSpec spec)
+    {
+        var type = TypeHelper.GetNetType(point);
+        if (type == null)
+        {
+            // 找到物属性定义
+            var pi = spec?.Properties?.FirstOrDefault(e => e.Id.EqualIgnoreCase(point.Name));
+            type = TypeHelper.GetNetType(pi?.DataType?.Type);
+        }
+        if (type == null) return null;
+
+        DefaultSpan.Current?.AppendTag("ConvertToBit->" + type.FullName);
+
+        switch (type.GetTypeCode())
+        {
+            case TypeCode.Boolean:
+            case TypeCode.Byte:
+            case TypeCode.SByte:
+                return data.ToBoolean() ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+            case TypeCode.Int16:
+            case TypeCode.UInt16:
+            case TypeCode.Int32:
+            case TypeCode.UInt32:
+                return data.ToInt() > 0 ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+            case TypeCode.Int64:
+            case TypeCode.UInt64:
+                return data.ToLong() > 0 ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+            default:
+                return data.ToBoolean() ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+        }
+    }
+
     /// <summary>原始数据转寄存器数组</summary>
     /// <param name="data"></param>
     /// <param name="point"></param>
     /// <param name="spec"></param>
     /// <returns></returns>
-    private UInt16[] ConvertToRegister(Object data, IPoint point, ThingSpec spec)
+    protected virtual UInt16[] ConvertToWord(Object data, IPoint point, ThingSpec spec)
     {
-        // 找到物属性定义
-        var pi = spec?.Properties?.FirstOrDefault(e => e.Id.EqualIgnoreCase(point.Name));
-        var type = pi?.DataType?.Type;
-        if (type.IsNullOrEmpty()) type = point.Type;
-        //if (type.IsNullOrEmpty()) return null;
+        var type = TypeHelper.GetNetType(point);
+        if (type == null)
+        {
+            // 找到物属性定义
+            var pi = spec?.Properties?.FirstOrDefault(e => e.Id.EqualIgnoreCase(point.Name));
+            type = TypeHelper.GetNetType(pi?.DataType?.Type);
+        }
+        if (type == null) return null;
 
-        var type2 = TypeHelper.GetNetType(point);
-        //var value = data.ChangeType(type2);
-        switch (type2.GetTypeCode())
+        DefaultSpan.Current?.AppendTag("ConvertToWord->" + type.FullName);
+
+        switch (type.GetTypeCode())
         {
             case TypeCode.Boolean:
+            case TypeCode.Byte:
+            case TypeCode.SByte:
                 return data.ToBoolean() ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
-            //case TypeCode.Byte:
-            //    break;
-            //case TypeCode.Char:
-            //    break;
-            //case TypeCode.DateTime:
-            //    break;
-            //case TypeCode.DBNull:
-            //    break;
-            //case TypeCode.Empty:
-            //    break;
             case TypeCode.Int16:
             case TypeCode.UInt16:
                 return new[] { (UInt16)data.ToInt() };
@@ -378,10 +416,6 @@ public class FxLinksDriver : DriverBase
                     var n = data.ToLong();
                     return new[] { (UInt16)(n >> 48), (UInt16)(n >> 32), (UInt16)(n >> 16), (UInt16)(n & 0xFFFF) };
                 }
-            //case TypeCode.Object:
-            //    break;
-            //case TypeCode.SByte:
-            //    break;
             case TypeCode.Single:
                 {
                     var d = (Single)data.ToDouble();
@@ -398,7 +432,7 @@ public class FxLinksDriver : DriverBase
                 }
             case TypeCode.Decimal:
                 {
-                    var d = (Decimal)data.ToDecimal();
+                    var d = data.ToDecimal();
                     var n = (UInt64)d;
                     return new[] { (UInt16)(n >> 48), (UInt16)(n >> 32), (UInt16)(n >> 16), (UInt16)(n & 0xFFFF) };
                 }
