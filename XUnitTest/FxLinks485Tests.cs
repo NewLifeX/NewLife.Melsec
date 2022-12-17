@@ -302,4 +302,51 @@ public class FxLinks485Tests
         pk = rs.ToPacket();
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
     }
+
+    [Theory]
+    [InlineData("D232", new UInt16[] { 7 }, "05 30 35 46 46 57 57 30 44 30 32 33 32 30 31 30 30 30 37 30 32", "05FFWW0D023201000702")]
+    [InlineData("D232", new UInt16[] { 8, 9 }, "05 30 35 46 46 57 57 30 44 30 32 33 32 30 32 30 30 30 38 30 30 30 39 43 44", "05FFWW0D02320200080009CD")]
+    [InlineData("D230", new UInt16[] { 1, 2, 6, 7 }, "05 30 35 46 46 57 57 30 44 30 32 33 30 30 34 30 30 30 31 30 30 30 32 30 30 30 36 30 30 30 37 34 43", "05FFWW0D02300400010002000600074C")]
+    public void WriteWord(String address, UInt16[] values, String request, String hex)
+    {
+        var dt = request.ToHex();
+        var v = dt.ReadBytes(1, -1).ToStr();
+        //Assert.Equal("05FFWW0M010301000102", v);
+        Assert.Equal(hex, v);
+
+        var msg = new FxLinksMessage();
+        var r = msg.Read(new MemoryStream(dt), null);
+        Assert.True(r);
+
+        Assert.Equal(ControlCodes.ENQ, msg.Code);
+        Assert.Equal(5, msg.Station);
+        Assert.Equal(0xFF, msg.PLC);
+        Assert.Equal("WW", msg.Command);
+        Assert.Equal(0, msg.Wait);
+        Assert.Equal(address, msg.Address);
+
+        var valueStr = values.Length.ToString().PadLeft(2, '0');
+        valueStr += values.Join("", e => e.ToString().PadLeft(4, '0'));
+
+        Assert.Equal(valueStr, msg.Payload);
+        Assert.Equal($"WW ({address}, {valueStr})", msg.ToString());
+
+        var pk = msg.ToPacket();
+        Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
+
+        var str = "06 30 35 46 46";
+        dt = str.ToHex();
+        v = dt.ReadBytes(1).ToStr();
+        Assert.Equal("05FF", v);
+
+        var rs = msg.CreateReply();
+        r = rs.Read(new MemoryStream(dt), null);
+        Assert.True(r);
+
+        Assert.Equal(ControlCodes.ACK, rs.Code);
+        Assert.Equal("ACK ()", rs.ToString());
+
+        pk = rs.ToPacket();
+        Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
+    }
 }
