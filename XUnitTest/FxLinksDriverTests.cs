@@ -102,7 +102,7 @@ public class FxLinksDriverTests
         // 模拟FxLinks
         var mockFxLinks = new Mock<FxLinks> { CallBase = true };
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
-            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
                 Payload = e.Address == "D100" ? "12-34".ToHex() : "56-78".ToHex(),
             });
@@ -139,7 +139,7 @@ public class FxLinksDriverTests
     {
         var mockFxLinks = new Mock<FxLinks> { CallBase = true };
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
-            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
                 Code = ControlCodes.ACK,
             });

@@ -38,10 +38,10 @@ public class FxLinksMessage : IAccessor
     [IgnoreDataMember]
     public Packet Payload { get; set; }
 
-    /// <summary>校验和</summary>
+    /// <summary>校验和。读取出来</summary>
     public Byte CheckSum { get; set; }
 
-    /// <summary>校验和</summary>
+    /// <summary>校验和。计算出来</summary>
     public Byte CheckSum2 { get; set; }
     #endregion
 
@@ -91,63 +91,12 @@ public class FxLinksMessage : IAccessor
                     break;
                 }
 
-            case ControlCodes.STX:
-                {
-                    // 05FF0001\03B5
-                    // STX-05FF0-ETX-24
-                    var hex = stream.ReadBytes(-1).ToStr();
-
-                    Host = Convert.ToByte(hex[..2], 16);
-                    PC = Convert.ToByte(hex[2..4], 16);
-
-                    var len = hex.Length - 4 - 3;
-                    if (len > 0)
-                    {
-                        var str = hex.Substring(4, len);
-                        if (len == 1)
-                            Payload = new Byte[] { Convert.ToByte(str, 16) };
-                        else if (Command == "BR")
-                            Payload = str.ToArray().Select(e => Convert.ToByte(e + "", 16)).ToArray();
-                        else
-                            Payload = str.ToHex();
-                    }
-
-                    //CheckSum = Convert.ToByte(hex[^2..], 16);
-                    CheckSum2 = (Byte)hex.ToArray().Take(hex.Length - 2).Sum(e => e);
-                    break;
-                }
-
-            case ControlCodes.ETX:
-                break;
-            case ControlCodes.ACK:
-                {
-                    // 05FF
-                    var hex = stream.ReadBytes(-1).ToStr();
-
-                    Host = Convert.ToByte(hex[..2], 16);
-                    PC = Convert.ToByte(hex[2..4], 16);
-
-                    break;
-                }
-
             default:
                 return false;
         }
 
         return true;
     }
-
-    ///// <summary>解析消息</summary>
-    ///// <param name="data">数据包</param>
-    ///// <param name="reply">是否响应</param>
-    ///// <returns></returns>
-    //public static FxLinksMessage Read(Packet data, Boolean reply = false)
-    //{
-    //    var msg = new FxLinksMessage();
-    //    if (msg.Read(data.GetStream(), null)) return msg;
-
-    //    return null;
-    //}
 
     /// <summary>写入消息到数据流</summary>
     /// <param name="stream">数据流</param>
@@ -189,64 +138,6 @@ public class FxLinksMessage : IAccessor
                     break;
                 }
 
-            case ControlCodes.STX:
-                {
-                    // 05FF0001\03B5
-                    var sb = new StringBuilder(64);
-
-                    sb.Append(Host.ToString("X2"));
-                    sb.Append(PC.ToString("X2"));
-
-                    var pk = Payload;
-                    if (pk != null && pk.Total > 0)
-                    {
-                        if (pk.Total == 1)
-                            sb.Append(pk[0].ToString("X"));
-                        else if (Command == "BR")
-                        {
-                            var buf = pk.ReadBytes();
-                            for (var i = 0; i < buf.Length; i++)
-                            {
-                                sb.Append(Convert.ToString(buf[i], 16));
-                            }
-                        }
-                        else
-                            sb.Append(pk.ToHex(256));
-                    }
-
-                    sb.Append((Char)ControlCodes.ETX);
-
-                    var sum = 0;
-                    for (var i = 0; i < sb.Length; i++)
-                    {
-                        sum += sb[i];
-                    }
-                    CheckSum2 = (Byte)sum;
-                    sb.Append(CheckSum2.ToString("X2"));
-
-                    var hex = sb.ToString();
-                    stream.Write(hex.GetBytes());
-
-                    break;
-                }
-
-            case ControlCodes.ETX:
-                break;
-
-            case ControlCodes.ACK:
-                {
-                    // 05FF
-                    var sb = new StringBuilder(64);
-
-                    sb.Append(Host.ToString("X2"));
-                    sb.Append(PC.ToString("X2"));
-
-                    var hex = sb.ToString();
-                    stream.Write(hex.GetBytes());
-
-                    break;
-                }
-
             default:
                 return false;
         }
@@ -268,13 +159,10 @@ public class FxLinksMessage : IAccessor
     /// <summary>创建响应</summary>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    public virtual FxLinksMessage CreateReply()
+    public virtual FxLinksResponse CreateReply()
     {
-        //if (Reply) throw new InvalidOperationException();
-
-        var msg = new FxLinksMessage
+        var msg = new FxLinksResponse
         {
-            //Reply = true,
             Host = Host,
             PC = PC,
             Command = Command,

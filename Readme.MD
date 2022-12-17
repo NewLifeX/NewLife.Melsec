@@ -11,6 +11,12 @@
 源码： https://github.com/NewLifeX/NewLife.Melsec  
 Nuget：NewLife.Melsec  
 
+## FxLinks协议
+FxLinks协议常用指令：
+1. ENQ05询问，BR位读取，BW字读取，BW位写入，WW字写入，以校验和结束
+2. STX02读取响应，包括位读取和字读取的响应数据，以ETX03和校验和结束
+3. ACK确认写入响应，包括位写入和字写入
+4. NAK不确认写入响应，包括位写入和字写入
 
 ## 新生命项目矩阵
 各项目默认支持net7.0/netstandard2.1/netstandard2.0/net4.61，旧版（2021.1225）支持net4.5/net4.0/net2.0  

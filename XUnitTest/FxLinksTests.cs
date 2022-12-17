@@ -14,7 +14,7 @@ public class FxLinksTests
         // 模拟FxLinks。CallBase 指定调用基类方法
         var mockFxLinks = new Mock<FxLinks> { CallBase = true };
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
-            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
                 Payload = "12-34-56-78".ToHex()
             });
@@ -41,7 +41,7 @@ public class FxLinksTests
         // 模拟FxLinks
         var mockFxLinks = new Mock<FxLinks> { CallBase = true };
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
-            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
                 Payload = "12-34".ToHex()
             });
@@ -63,7 +63,7 @@ public class FxLinksTests
         // 模拟FxLinks
         var mockFxLinks = new Mock<FxLinks> { CallBase = true };
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
-            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
                 Payload = "12-34-56-78".ToHex()
             });
@@ -85,7 +85,7 @@ public class FxLinksTests
         // 模拟FxLinks。CallBase 指定调用基类方法
         var mb = new Mock<FxLinks>() { CallBase = true };
         mb.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
-            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
                 Code = ControlCodes.ACK,
             });
@@ -107,7 +107,7 @@ public class FxLinksTests
         // 模拟FxLinks
         var mb = new Mock<FxLinks>() { CallBase = true };
         mb.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
-            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
                 Code = ControlCodes.ACK,
             });
@@ -125,7 +125,7 @@ public class FxLinksTests
         // 模拟FxLinks
         var mb = new Mock<FxLinks>() { CallBase = true };
         mb.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
-            .Returns<FxLinksMessage>(e => new FxLinksMessage
+            .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
                 Code = ControlCodes.ACK,
             });

@@ -3,7 +3,6 @@ using System.IO.Ports;
 using System.Runtime.CompilerServices;
 using NewLife.Data;
 using NewLife.Log;
-using NewLife.Security;
 
 [assembly: InternalsVisibleTo("XUnitTest, PublicKey=00240000048000001401000006020000002400005253413100080000010001000d41eb3bdab5c2150958b46c95632b7e4dcb0af77ed8637bd8543875bc2443d01273143bb46655a48a92efa76251adc63ccca6d0e9cef2e0ce93e32b5043bea179a6c710981be4a71703a03e10960643f7df091f499cf60183ef0e4e4e2eebf26e25cea0eebf87c8a6d7f8130c283fc3f747cb90623f0aaa619825e3fcd82f267a0f4bfd26c9f2a6b5a62a6b180b4f6d1d091fce6bd60a9aa9aa5b815b833b44e0f2e58b28a354cb20f52f31bb3b3a7c54f515426537e41f9c20c07e51f9cab8abc311daac19a41bd473a51c7386f014edf1863901a5c29addc89da2f2659c9c1e95affd6997396b9680e317c493e974a813186da277ff9c1d1b30e33cb5a2f6")]
 
@@ -95,7 +94,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="data">数据</param>
     /// <returns>返回响应消息的负载部分</returns>
-    public virtual FxLinksMessage SendCommand(String command, Byte host, String address, Packet data)
+    public virtual FxLinksResponse SendCommand(String command, Byte host, String address, Packet data)
     {
         var msg = new FxLinksMessage
         {
@@ -116,7 +115,7 @@ public class FxLinks : DisposeBase
     /// <summary>发送消息并接收返回</summary>
     /// <param name="message">Modbus消息</param>
     /// <returns></returns>
-    internal protected virtual FxLinksMessage SendCommand(FxLinksMessage message)
+    internal protected virtual FxLinksResponse SendCommand(FxLinksMessage message)
     {
         Open();
 
@@ -127,10 +126,6 @@ public class FxLinks : DisposeBase
 
         var cmd = message.ToPacket();
         var buf = cmd.ToArray();
-
-        //var crc = ModbusHelper.Crc(buf, 0, buf.Length);
-        //cmd.Append(crc.GetBytes(true));
-        //buf = cmd.ToArray();
 
         using var span = Tracer?.NewSpan("fxlinks:SendCommand", buf.ToHex("-"));
 
@@ -156,16 +151,14 @@ public class FxLinks : DisposeBase
             var len = pk.Total - 2;
             if (len < 2) return null;
 
-            var rs = new FxLinksMessage { Command = message.Command };
-            if (!rs.Read(pk.GetStream(), null)) return null;
+            var rs = message.CreateReply();
+            if (!rs.Read(pk.GetStream(), message)) return null;
 
             // 校验
             if (rs.CheckSum != rs.CheckSum2) WriteLog("CheckSum Error {0:X2}!={1:X2} !", rs.CheckSum, rs.CheckSum2);
 
             Log?.Debug("<= {0}", rs);
 
-            // 检查功能码
-            //return rs.ErrorCode > 0 ? throw new ModbusException(rs.ErrorCode, rs.ErrorCode + "") : (ModbusMessage)rs;
             return rs;
         }
         catch (Exception ex)
@@ -303,6 +296,7 @@ public class FxLinks : DisposeBase
 
             var rs = SendCommand("BW", host, address, buf);
             if (rs == null) return -1;
+            if (rs.Code == ControlCodes.NAK) throw new Exception($"WriteBit({address}, {values.Join(",")}) get {rs.Code}");
             if (rs.Code != ControlCodes.ACK) return -1;
 
             return 0;
@@ -334,6 +328,7 @@ public class FxLinks : DisposeBase
 
             var rs = SendCommand("WW", host, address, buf);
             if (rs == null) return -1;
+            if (rs.Code == ControlCodes.NAK) throw new Exception($"WriteWord({address}, {values.Join(",")}) get {rs.Code}");
             if (rs.Code != ControlCodes.ACK) return -1;
 
             return 0;
