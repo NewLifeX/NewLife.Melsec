@@ -329,12 +329,12 @@ public class FxLinks : DisposeBase
         try
         {
             // 1字节（2字符）的点位数
-            // 后续每个点位1个字符
+            // 后续每个点位4个字符
             var sb = new StringBuilder();
             sb.Append(((Byte)values.Length).ToHexChars());
             for (var i = 0; i < values.Length; i++)
             {
-                sb.Append(values[i].ToString("X2"));
+                sb.Append(values[i].ToString("X4"));
             }
 
             var rs = SendCommand("WW", host, address, sb.ToString());
