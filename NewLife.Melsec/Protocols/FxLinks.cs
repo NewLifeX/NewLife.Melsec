@@ -218,7 +218,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="count">线圈数量。一般要求8的倍数</param>
     /// <returns>线圈状态字节数组</returns>
-    public Byte[] ReadBit(Byte host, String address, Byte count)
+    public virtual Byte[] ReadBit(Byte host, String address, Byte count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadBit", $"host={host} address={address} count={count}");
         try
@@ -240,7 +240,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="count">输入数量。一般要求8的倍数</param>
     /// <returns>输入状态字节数组</returns>
-    public UInt16[] ReadWord(Byte host, String address, Byte count)
+    public virtual UInt16[] ReadWord(Byte host, String address, Byte count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadWord", $"host={host} address={address} count={count}");
         try

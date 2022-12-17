@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using HslCommunication.ModBus;
 using Moq;
 using NewLife;
+using NewLife.IoT;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
 using NewLife.Melsec.Drivers;
@@ -61,8 +63,8 @@ public class FxLinksDriverTests
 
         // 模拟FxLinks
         var mb = new Mock<FxLinks>();
-        //mb.Setup(e => e.Read(FunctionCodes.ReadRegister, 1, 0, 10))
-        //    .Returns("12-34-56-78-90-12-34-56-78-90-12-34-56-78-90-12-34-56-78-90".ToHex());
+        mb.Setup(e => e.ReadWord(1, "D0", It.IsAny<Byte>()))
+            .Returns(new UInt16[] { 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd });
         driver.Link = mb.Object;
 
         var points = new List<IPoint>();
@@ -71,7 +73,7 @@ public class FxLinksDriverTests
             var pt = new PointModel
             {
                 Name = "p" + i,
-                Address = i + "",
+                Address = "D" + i,
                 Length = 2
             };
 
@@ -159,5 +161,162 @@ public class FxLinksDriverTests
 
         var rs = (Int32)driver.Write(node, pt, "15");
         Assert.Equal(0, rs);
+    }
+
+    [Fact]
+    public void BuildSegments()
+    {
+        var driver = new FxLinksDriver();
+
+        // 10个点位
+        var points = new List<IPoint>();
+        for (var i = 0; i < 10; i++)
+        {
+            var pt = new PointModel
+            {
+                Name = "p" + i,
+                Address = "X" + i,
+                Length = 2
+            };
+
+            points.Add(pt);
+        }
+
+        // 凑批成为一个
+        var segs = driver.BuildSegments(points, new FxLinksParameter());
+        Assert.Equal(1, segs.Count);
+        Assert.Equal(0, segs[0].Address);
+        Assert.Equal(10, segs[0].Count);
+
+        // 每4个一批，凑成3批
+        segs = driver.BuildSegments(points, new FxLinksParameter { BatchSize = 4 });
+        Assert.Equal(3, segs.Count);
+        Assert.Equal(4, segs[1].Address);
+        Assert.Equal(4, segs[1].Count);
+    }
+
+    [Fact]
+    public void BuildSegmentsOnBit()
+    {
+        var driver = new FxLinksDriver();
+
+        // 10个点位
+        var points = new List<IPoint>
+        {
+            new PointModel { Name = "p0", Address = "Y0", },
+            new PointModel { Name = "p2", Address = "Y2", },
+            new PointModel { Name = "p4", Address = "Y4", },
+            new PointModel { Name = "p8", Address = "Y8", },
+            new PointModel { Name = "p16", Address = "Y10", },
+            new PointModel { Name = "p20", Address = "Y14", }
+        };
+
+        // 凑批成为一个
+        var segs = driver.BuildSegments(points, new FxLinksParameter());
+        Assert.Equal(1, segs.Count);
+        Assert.Equal(0, segs[0].Address);
+        Assert.Equal(15, segs[0].Count);
+
+        // 每4个一批，凑成3批
+        segs = driver.BuildSegments(points, new FxLinksParameter { BatchSize = 4 });
+        Assert.Equal(2, segs.Count);
+        Assert.Equal(10, segs[1].Address);
+        Assert.Equal(5, segs[1].Count);
+    }
+
+    [Fact]
+    public void ReadWithBatch()
+    {
+        var driver = new FxLinksDriver();
+
+        var p = driver.GetDefaultParameter() as FxLinksParameter;
+        var dic = p.ToDictionary();
+
+        var node = driver.Open(null, dic);
+        p = node.Parameter as FxLinksParameter;
+
+        // 模拟
+        var mb = new Mock<FxLinks>();
+        //mb.Setup(e => e.Read("BR", 1, "M0", 8))
+        //    .Returns("12-34-56-78-90-12-34-56-78-90-12-34-56-78-90-12".ToHex());
+        mb.Setup(e => e.ReadBit(1, "M0", 8))
+            .Returns("12-34-56-78-90-12-34-56-78-90-12-34-56-78-90-12".ToHex());
+        mb.Setup(e => e.ReadBit(1, "M8", 2))
+            .Returns("78-90-12-34-56-78-90-12".ToHex());
+        driver.Link = mb.Object;
+
+        var points = new List<IPoint>();
+        for (var i = 0; i < 10; i++)
+        {
+            var pt = new PointModel
+            {
+                Name = "p" + i,
+                Address = "M" + i,
+            };
+
+            points.Add(pt);
+        }
+
+        // 打断
+        p.BatchSize = 8;
+
+        // 读取
+        var rs = driver.Read(node, points.ToArray());
+        Assert.NotNull(rs);
+        Assert.Equal(10, rs.Count);
+
+        for (var i = 0; i < 10; i++)
+        {
+            var name = "p" + i;
+            Assert.True(rs.ContainsKey(name));
+        }
+    }
+
+    [Fact]
+    public void ReadWithBatch2()
+    {
+        var driver = new FxLinksDriver();
+
+        var p = driver.GetDefaultParameter() as FxLinksParameter;
+        var dic = p.ToDictionary();
+
+        var node = driver.Open(null, dic);
+        p = node.Parameter as FxLinksParameter;
+
+        var mb = new Mock<FxLinks>();
+        mb.Setup(e => e.ReadWord(1, "D0", It.IsAny<Byte>()))
+            .Returns(new UInt16[] { 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd });
+        mb.Setup(e => e.ReadWord(1, "D4", It.IsAny<Byte>()))
+            .Returns(new UInt16[] { 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd });
+        mb.Setup(e => e.ReadWord(1, "D8", It.IsAny<Byte>()))
+            .Returns(new UInt16[] { 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd });
+        driver.Link = mb.Object;
+
+        var points = new List<IPoint>();
+        for (var i = 0; i < 10; i++)
+        {
+            var pt = new PointModel
+            {
+                Name = "p" + i,
+                Address = "D" + i,
+                Length = 2
+            };
+
+            points.Add(pt);
+        }
+
+        // 打断
+        p.BatchSize = 4;
+
+        // 读取
+        var rs = driver.Read(node, points.ToArray());
+        Assert.NotNull(rs);
+        Assert.Equal(10, rs.Count);
+
+        for (var i = 0; i < 10; i++)
+        {
+            var name = "p" + i;
+            Assert.True(rs.ContainsKey(name));
+        }
     }
 }

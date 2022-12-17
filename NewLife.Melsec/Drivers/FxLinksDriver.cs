@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Diagnostics;
 using NewLife.IoT;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
@@ -137,30 +138,157 @@ public class FxLinksDriver : DriverBase
         if (points == null || points.Length == 0) return dic;
 
         var n = node as MelsecNode;
+        var p = node.Parameter as FxLinksParameter;
 
-        foreach (var point in points)
+        // 组合多个片段，减少读取次数
+        var list = BuildSegments(points, p);
+
+        // 加锁，避免冲突
+        lock (Link)
         {
-            if (point.Address.IsNullOrEmpty()) continue;
+            // 分段整体读取
+            for (var i = 0; i < list.Count; i++)
+            {
+                var seg = list[i];
 
-            // 其中一项读取报错时，直接跳过，不要影响其它批次
-            try
-            {
-                // 根据点位地址类型，使用不同操作，尽管字读取也可以用来读取位存储区，但很容易混淆，并且不好解析，因此不支持
-                var name = point.Name;
-                if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
-                    dic[name] = Link.ReadBit(n.Host, point.Address, 1);
-                else if (point.Address.StartsWithIgnoreCase("D"))
-                    dic[name] = Link.ReadWord(n.Host, point.Address, 1)?.FirstOrDefault();
-                else
-                    dic[name] = Link.Read(point.Address[..1], n.Host, point.Address, 1);
-            }
-            catch (Exception ex)
-            {
-                Log?.Error(ex.ToString());
+                // 其中一项读取报错时，直接跳过，不要影响其它批次
+                try
+                {
+                    // 根据点位地址类型，使用不同操作，尽管字读取也可以用来读取位存储区，但很容易混淆，并且不好解析，因此不支持
+                    if (seg.Code.EqualIgnoreCase("X", "Y", "M"))
+                        seg.Bits = Link.ReadBit(n.Host, seg.Code + seg.Address, (Byte)seg.Count);
+                    else if (seg.Code.EqualIgnoreCase("D"))
+                        seg.Values = Link.ReadWord(n.Host, seg.Code + seg.Address, (Byte)seg.Count);
+                    else
+                        throw new NotSupportedException($"{seg.Code}{seg.Address} is unkown address");
+                }
+                catch (Exception ex)
+                {
+                    Log?.Error(ex.ToString());
+                }
+
+                // 读取时延迟一点时间
+                if (i < list.Count - 1 && p.BatchDelay > 0) Thread.Sleep(p.BatchDelay);
             }
         }
 
+        // 分割数据
+        return Dispatch(points, list);
+    }
+
+    internal IList<Segment> BuildSegments(IList<IPoint> points, FxLinksParameter p)
+    {
+        // 组合多个片段，减少读取次数
+        var list = new List<Segment>();
+        foreach (var point in points)
+        {
+            var cmd = point.Address[..1];
+            var addr = point.Address[1..].ToInt();
+
+            list.Add(new Segment
+            {
+                Code = cmd,
+                Address = addr,
+                Count = 1
+            });
+        }
+        list = list.OrderBy(e => e.Code).ThenBy(e => e.Address).ThenByDescending(e => e.Count).ToList();
+
+        var k = 1;
+        var rs = new List<Segment>();
+        var prv = list[0];
+        rs.Add(prv);
+        for (var i = 1; i < list.Count; i++)
+        {
+            var cur = list[i];
+
+            // 前一段末尾碰到了当前段开始，可以合并
+            var flag = prv.Address + prv.Count >= cur.Address;
+            // 如果是读取位存储区，间隔小于8都可以合并
+            if (!flag && cur.Code.EqualIgnoreCase("X", "Y", "M"))
+            {
+                flag = prv.Address + prv.Count + 8 > cur.Address;
+            }
+
+            // 前一段末尾碰到了当前段开始，可以合并
+            if (flag && prv.Code == cur.Code)
+            {
+                if (p.BatchSize <= 0 || k < p.BatchSize)
+                {
+                    // 要注意，可能前后重叠，也可能前面区域比后面还大
+                    var size = cur.Address + cur.Count - prv.Address;
+                    if (size > prv.Count) prv.Count = size;
+
+                    // 连续合并数累加
+                    k++;
+                }
+                else
+                {
+                    rs.Add(cur);
+
+                    prv = cur;
+                    k = 1;
+                }
+            }
+            else
+            {
+                rs.Add(cur);
+
+                prv = cur;
+                k = 1;
+            }
+        }
+
+        return rs;
+    }
+
+    internal IDictionary<String, Object> Dispatch(IPoint[] points, IList<Segment> segments)
+    {
+        var dic = new Dictionary<String, Object>();
+        if (segments == null || segments.Count == 0) return dic;
+
+        foreach (var point in points)
+        {
+            var cmd = point.Address[..1];
+            var addr = point.Address[1..].ToInt();
+
+            // 物模型配置必须跟点位一致，不允许一个设备属性对应多个寄存器
+            var count = 1;
+
+            // 找到片段
+            var seg = segments.FirstOrDefault(e => e.Address <= addr && addr + count <= e.Address + e.Count);
+            if (seg != null)
+            {
+                var code = seg.Code;
+                if (seg.Values != null)
+                {
+                    // 校验数据完整性
+                    var offset = addr - seg.Address;
+                    if (seg.Values.Length >= offset + count)
+                        dic[point.Name] = seg.Values[offset];
+                }
+                else if (seg.Bits != null)
+                {
+                    // 校验数据完整性
+                    var offset = addr - seg.Address;
+                    if (seg.Bits.Length >= offset + count)
+                        dic[point.Name] = seg.Bits[offset];
+                }
+                else
+                    throw new NotSupportedException($"无法拆分{code}");
+            }
+        }
         return dic;
+    }
+
+    [DebuggerDisplay("{Code}({Address}, {Count})")]
+    internal class Segment
+    {
+        public String Code { get; set; }
+        public Int32 Address { get; set; }
+        public Int32 Count { get; set; }
+        public Byte[] Bits { get; set; }
+        public UInt16[] Values { get; set; }
     }
 
     /// <summary>
