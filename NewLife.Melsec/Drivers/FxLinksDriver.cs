@@ -147,14 +147,14 @@ public class FxLinksDriver : DriverBase
             {
                 var name = point.Name;
                 if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
-                    dic[name] = Link.ReadBit(n.Host, point.Address, 1)?.ReadBytes();
+                    dic[name] = Link.ReadBit(n.Host, point.Address, 1);
                 else
                 {
                     var type = point.GetNetType();
                     if (type == typeof(Boolean) || type == typeof(Byte))
-                        dic[name] = Link.ReadBit(n.Host, point.Address, 1)?.ReadBytes();
+                        dic[name] = Link.ReadBit(n.Host, point.Address, 1)?.FirstOrDefault();
                     else
-                        dic[name] = Link.ReadWord(n.Host, point.Address, 1)?.ReadBytes();
+                        dic[name] = Link.ReadWord(n.Host, point.Address, 1)?.FirstOrDefault();
                 }
             }
             catch (Exception ex)

@@ -20,10 +20,10 @@ public class FxLinksMessage : IAccessor
     public ControlCodes Code { get; set; }
 
     /// <summary>站号</summary>
-    public Byte Host { get; set; }
+    public Byte Station { get; set; }
 
-    /// <summary>PC号</summary>
-    public Byte PC { get; set; }
+    /// <summary>PLC号</summary>
+    public Byte PLC { get; set; }
 
     /// <summary>操作码</summary>
     public String Command { get; set; }
@@ -74,8 +74,8 @@ public class FxLinksMessage : IAccessor
                     // 05FFWR0D02100132
                     var hex = stream.ReadBytes(-1).ToStr();
 
-                    Host = Convert.ToByte(hex[..2], 16);
-                    PC = Convert.ToByte(hex[2..4], 16);
+                    Station = Convert.ToByte(hex[..2], 16);
+                    PLC = Convert.ToByte(hex[2..4], 16);
 
                     Command = hex[4..6];
                     Wait = Convert.ToByte(hex[6..7], 16);
@@ -113,8 +113,8 @@ public class FxLinksMessage : IAccessor
                     // 05FFWR0D02100132
                     var sb = new StringBuilder(64);
 
-                    sb.Append(Host.ToString("X2"));
-                    sb.Append(PC.ToString("X2"));
+                    sb.Append(Station.ToString("X2"));
+                    sb.Append(PLC.ToString("X2"));
                     sb.Append(Command);
                     sb.Append(Wait.ToString("X"));
 
@@ -163,8 +163,8 @@ public class FxLinksMessage : IAccessor
     {
         var msg = new FxLinksResponse
         {
-            Host = Host,
-            PC = PC,
+            Host = Station,
+            PC = PLC,
             Command = Command,
         };
 

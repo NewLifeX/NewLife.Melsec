@@ -22,8 +22,8 @@ public class FxLinksMessageTests
         Assert.True(rs);
 
         Assert.Equal(ControlCodes.ENQ, msg.Code);
-        Assert.Equal(5, msg.Host);
-        Assert.Equal(0xFF, msg.PC);
+        Assert.Equal(5, msg.Station);
+        Assert.Equal(0xFF, msg.PLC);
         Assert.Equal("WR", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("D210", msg.Address);
@@ -75,8 +75,8 @@ public class FxLinksMessageTests
         Assert.True(rs);
 
         Assert.Equal(ControlCodes.ENQ, msg.Code);
-        Assert.Equal(5, msg.Host);
-        Assert.Equal(0xFF, msg.PC);
+        Assert.Equal(5, msg.Station);
+        Assert.Equal(0xFF, msg.PLC);
         Assert.Equal("BW", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("M103", msg.Address);
@@ -128,8 +128,8 @@ public class FxLinksMessageTests
         Assert.True(rs);
 
         Assert.Equal(ControlCodes.ENQ, msg.Code);
-        Assert.Equal(5, msg.Host);
-        Assert.Equal(0xFF, msg.PC);
+        Assert.Equal(5, msg.Station);
+        Assert.Equal(0xFF, msg.PLC);
         Assert.Equal("WW", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("D210", msg.Address);
@@ -181,8 +181,8 @@ public class FxLinksMessageTests
         Assert.True(rs);
 
         Assert.Equal(ControlCodes.ENQ, msg.Code);
-        Assert.Equal(5, msg.Host);
-        Assert.Equal(0xFF, msg.PC);
+        Assert.Equal(5, msg.Station);
+        Assert.Equal(0xFF, msg.PLC);
         Assert.Equal("WW", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("D240", msg.Address);
@@ -233,8 +233,8 @@ public class FxLinksMessageTests
         Assert.True(rs);
 
         Assert.Equal(ControlCodes.ENQ, msg.Code);
-        Assert.Equal(5, msg.Host);
-        Assert.Equal(0xFF, msg.PC);
+        Assert.Equal(5, msg.Station);
+        Assert.Equal(0xFF, msg.PLC);
         Assert.Equal("WW", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("D212", msg.Address);
@@ -306,8 +306,8 @@ public class FxLinksMessageTests
         //Assert.True(rs.Reply);
         //Assert.Equal(msg.Command, rs.Command);
         Assert.NotNull(rs);
-        Assert.Equal(msg.PC, rs.PC);
-        Assert.Equal(msg.Host, rs.Host);
+        Assert.Equal(msg.PLC, rs.PC);
+        Assert.Equal(msg.Station, rs.Host);
     }
 
     //[Fact]

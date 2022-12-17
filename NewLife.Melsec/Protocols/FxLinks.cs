@@ -99,8 +99,8 @@ public class FxLinks : DisposeBase
         var msg = new FxLinksMessage
         {
             Code = ControlCodes.ENQ,
-            Host = host,
-            PC = 0xFF,
+            Station = host,
+            PLC = 0xFF,
             Command = command,
             Address = address,
 
@@ -199,7 +199,7 @@ public class FxLinks : DisposeBase
     /// <param name="count">个数。寄存器个数或线圈个数</param>
     /// <returns></returns>
     /// <exception cref="NotSupportedException"></exception>
-    public virtual Packet Read(String command, Byte host, String address, Byte count)
+    public virtual Object Read(String command, Byte host, String address, Byte count)
     {
         switch (command)
         {
@@ -217,7 +217,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="count">线圈数量。一般要求8的倍数</param>
     /// <returns>线圈状态字节数组</returns>
-    public Packet ReadBit(Byte host, String address, Byte count)
+    public Byte[] ReadBit(Byte host, String address, Byte count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadBit", $"host={host} address={address} count={count}");
         try
@@ -225,7 +225,7 @@ public class FxLinks : DisposeBase
             var rs = SendCommand("BR", host, address, new[] { count });
             if (rs == null) return null;
 
-            return rs.Payload;
+            return rs.Payload?.ReadBytes();
         }
         catch (Exception ex)
         {
@@ -239,7 +239,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="count">输入数量。一般要求8的倍数</param>
     /// <returns>输入状态字节数组</returns>
-    public Packet ReadWord(Byte host, String address, Byte count)
+    public UInt16[] ReadWord(Byte host, String address, Byte count)
     {
         using var span = Tracer?.NewSpan("fxlinks:ReadWord", $"host={host} address={address} count={count}");
         try
@@ -247,7 +247,16 @@ public class FxLinks : DisposeBase
             var rs = SendCommand("WR", host, address, new[] { count });
             if (rs == null) return null;
 
-            return rs.Payload;
+            var buf = rs.Payload?.ReadBytes();
+            if (buf == null) return null;
+
+            var us = new UInt16[buf.Length / 2];
+            for (var i = 0; i < us.Length; i++)
+            {
+                us[0] = buf.ToUInt16(i * 2, false);
+            }
+
+            return us;
         }
         catch (Exception ex)
         {

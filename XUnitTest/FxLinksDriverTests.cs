@@ -130,8 +130,8 @@ public class FxLinksDriverTests
         Assert.NotNull(rs);
         Assert.Equal(2, rs.Count);
 
-        Assert.Equal(0x1234, (rs["调节池运行时间"] as Byte[]).ToUInt16(0, false));
-        Assert.Equal(0x5678, (rs["调节池停止时间"] as Byte[]).ToUInt16(0, false));
+        Assert.Equal(0x1234, (UInt16)rs["调节池运行时间"]);
+        Assert.Equal(0x5678, (UInt16)rs["调节池停止时间"]);
     }
 
     [Fact]

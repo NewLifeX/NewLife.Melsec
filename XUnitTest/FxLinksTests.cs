@@ -26,13 +26,13 @@ public class FxLinksTests
         Assert.Throws<NotSupportedException>(() => link.Read("BT", 1, "D202", 1));
 
         // 读取
-        var rs = link.Read("BR", 1, "D202", 1);
+        var rs = link.Read("BR", 1, "D202", 1) as Byte[];
         Assert.NotNull(rs);
-        Assert.Equal(0x1234, rs.ReadUInt16(false));
+        Assert.Equal(0x1234, rs[0]);
 
-        rs = link.Read("WR", 1, "D202", 2);
-        Assert.NotNull(rs);
-        Assert.Equal(0x12345678u, rs.ReadUInt32(false));
+        var rs2 = link.Read("WR", 1, "D202", 2) as UInt16[];
+        Assert.NotNull(rs2);
+        Assert.Equal(0x12345678u, rs2[0]);
     }
 
     [Fact]
@@ -74,9 +74,8 @@ public class FxLinksTests
         var rs = link.ReadWord(1, "D202", 2);
         Assert.NotNull(rs);
 
-        var buf = rs.ReadBytes();
-        Assert.Equal(4, buf.Length);
-        Assert.Equal(0x12345678u, buf.ToUInt32(0, false));
+        Assert.Equal(2, rs.Length);
+        Assert.Equal(0x12345678u, rs[0]);
     }
 
     [Fact]
