@@ -104,7 +104,7 @@ public class FxLinksDriverTests
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
-                Payload = e.Address == "D100" ? "12-34".ToHex() : "56-78".ToHex(),
+                Payload = e.Address == "D100" ? "1234" : "abCD",
             });
 
         driver.Link = mockFxLinks.Object;
@@ -131,7 +131,7 @@ public class FxLinksDriverTests
         Assert.Equal(2, rs.Count);
 
         Assert.Equal(0x1234, (UInt16)rs["调节池运行时间"]);
-        Assert.Equal(0x5678, (UInt16)rs["调节池停止时间"]);
+        Assert.Equal(0xabcd, (UInt16)rs["调节池停止时间"]);
     }
 
     [Fact]

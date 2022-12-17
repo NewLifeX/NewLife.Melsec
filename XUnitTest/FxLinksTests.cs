@@ -16,7 +16,7 @@ public class FxLinksTests
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
-                Payload = "12-34-56-78".ToHex()
+                Payload = "1234ABCD"
             });
 
         var link = mockFxLinks.Object;
@@ -28,11 +28,15 @@ public class FxLinksTests
         // 读取
         var rs = link.Read("BR", 1, "D202", 1) as Byte[];
         Assert.NotNull(rs);
-        Assert.Equal(0x1234, rs[0]);
+        Assert.Equal(1, rs[0]);
+        Assert.Equal(2, rs[1]);
+        Assert.Equal(3, rs[2]);
+        Assert.Equal(4, rs[3]);
 
         var rs2 = link.Read("WR", 1, "D202", 2) as UInt16[];
         Assert.NotNull(rs2);
-        Assert.Equal(0x12345678u, rs2[0]);
+        Assert.Equal(0x1234u, rs2[0]);
+        Assert.Equal(0xabcdu, rs2[1]);
     }
 
     [Fact]
@@ -43,7 +47,7 @@ public class FxLinksTests
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
-                Payload = "12-34".ToHex()
+                Payload = "1234"
             });
 
         var link = mockFxLinks.Object;
@@ -52,9 +56,11 @@ public class FxLinksTests
         var rs = link.ReadBit(1, "D01", 16);
         Assert.NotNull(rs);
 
-        var buf = rs.ReadBytes();
-        Assert.Equal(2, buf.Length);
-        Assert.Equal(0x1234, buf.ToUInt16(0, false));
+        Assert.Equal(4, rs.Length);
+        Assert.Equal(1, rs[0]);
+        Assert.Equal(2, rs[1]);
+        Assert.Equal(3, rs[2]);
+        Assert.Equal(4, rs[3]);
     }
 
     [Fact]
@@ -65,7 +71,7 @@ public class FxLinksTests
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksResponse
             {
-                Payload = "12-34-56-78".ToHex()
+                Payload = "1234ABCD"
             });
 
         var link = mockFxLinks.Object;
@@ -75,7 +81,8 @@ public class FxLinksTests
         Assert.NotNull(rs);
 
         Assert.Equal(2, rs.Length);
-        Assert.Equal(0x12345678u, rs[0]);
+        Assert.Equal(0x1234u, rs[0]);
+        Assert.Equal(0xabcdu, rs[1]);
     }
 
     [Fact]

@@ -2,6 +2,7 @@
 using System.Text;
 using NewLife.Data;
 using NewLife.Serialization;
+using static System.Collections.Specialized.BitVector32;
 
 namespace NewLife.Melsec.Protocols;
 
@@ -20,17 +21,16 @@ public class FxLinksResponse : IAccessor
     public ControlCodes Code { get; set; }
 
     /// <summary>站号</summary>
-    public Byte Host { get; set; }
+    public Byte Station { get; set; }
 
-    /// <summary>PC号</summary>
-    public Byte PC { get; set; }
+    /// <summary>PLC号</summary>
+    public Byte PLC { get; set; }
 
     /// <summary>操作码。解析数据前设置，仅用于判断如何解析数据</summary>
     public String Command { get; set; }
 
     /// <summary>负载数据</summary>
-    [IgnoreDataMember]
-    public Packet Payload { get; set; }
+    public String Payload { get; set; }
 
     /// <summary>校验和。读取出来</summary>
     public Byte CheckSum { get; set; }
@@ -47,7 +47,7 @@ public class FxLinksResponse : IAccessor
         //if (Code == ControlCodes.STX)
         //    return $"{Command} ({Payload?.ToHex()})";
         //else
-        return $"{Code} ({Payload?.ToHex()})";
+        return $"{Code} ({Payload})";
     }
     #endregion
 
@@ -68,8 +68,8 @@ public class FxLinksResponse : IAccessor
                     var p = stream.Position;
                     var hex = stream.ReadBytes(4).ToStr();
 
-                    Host = Convert.ToByte(hex[..2], 16);
-                    PC = Convert.ToByte(hex[2..4], 16);
+                    Station = hex.ToByte(0);
+                    PLC = hex.ToByte(2);
 
                     var retain = (Int32)(stream.Length - stream.Position);
                     if (retain < 3) return false;
@@ -77,14 +77,15 @@ public class FxLinksResponse : IAccessor
                     var len = retain - 3;
                     if (len > 0)
                     {
-                        var str = stream.ReadBytes(len).ToStr();
-                        // 位读取时，每个点位占1个字符；字读取时，每个点位占4个字符
-                        if (len == 1)
-                            Payload = new Byte[] { Convert.ToByte(str, 16) };
-                        else if (Command == "BR")
-                            Payload = str.ToArray().Select(e => Convert.ToByte(e + "", 16)).ToArray();
-                        else
-                            Payload = str.ToHex();
+                        Payload = stream.ReadBytes(len).ToStr();
+                        //var str = stream.ReadBytes(len).ToStr();
+                        //// 位读取时，每个点位占1个字符；字读取时，每个点位占4个字符
+                        //if (len == 1)
+                        //    Payload = new Byte[] { Convert.ToByte(str, 16) };
+                        //else if (Command == "BR")
+                        //    Payload = str.ToArray().Select(e => Convert.ToByte(e + "", 16)).ToArray();
+                        //else
+                        //    Payload = str.ToHex();
                     }
 
                     var b = (ControlCodes)stream.ReadByte();
@@ -94,8 +95,7 @@ public class FxLinksResponse : IAccessor
                     stream.Position = p;
                     CheckSum2 = (Byte)stream.ReadBytes(len).Sum(e => e);
 
-                    hex = stream.ReadBytes(2).ToStr();
-                    CheckSum = Convert.ToByte(hex, 16);
+                    CheckSum = stream.ReadBytes(2).ToStr().ToByte(0);
                     break;
                 }
 
@@ -107,8 +107,8 @@ public class FxLinksResponse : IAccessor
                     // 05FF
                     var hex = stream.ReadBytes(-1).ToStr();
 
-                    Host = Convert.ToByte(hex[..2], 16);
-                    PC = Convert.ToByte(hex[2..4], 16);
+                    Station = hex.ToByte(0);
+                    PLC = hex.ToByte(2);
 
                     break;
                 }
@@ -137,25 +137,27 @@ public class FxLinksResponse : IAccessor
                     // 05FF0001\03B5
                     var sb = new StringBuilder(64);
 
-                    sb.Append(Host.ToString("X2"));
-                    sb.Append(PC.ToString("X2"));
+                    sb.Append(Station.ToString("X2"));
+                    sb.Append(PLC.ToString("X2"));
 
                     var pk = Payload;
-                    if (pk != null && pk.Total > 0)
+                    if (pk != null)
                     {
-                        // 位读取时，每个点位占1个字符；字读取时，每个点位占4个字符
-                        if (pk.Total == 1)
-                            sb.Append(pk[0].ToString("X"));
-                        else if (Command == "BR")
-                        {
-                            var buf = pk.ReadBytes();
-                            for (var i = 0; i < buf.Length; i++)
-                            {
-                                sb.Append(Convert.ToString(buf[i], 16));
-                            }
-                        }
-                        else
-                            sb.Append(pk.ToHex(256));
+                        sb.Append(pk);
+                        //// 位读取时，每个点位占1个字符；字读取时，每个点位占4个字符
+                        //if (pk.Total == 1)
+                        //    sb.Append(pk[0].ToString("X"));
+                        //else if (Command == "BR")
+                        //{
+                        //    var buf = pk.ReadBytes();
+                        //    //for (var i = 0; i < buf.Length; i++)
+                        //    //{
+                        //    //    sb.Append(Convert.ToString(buf[i], 16));
+                        //    //}
+                        //    sb.Append(buf.ToHexString());
+                        //}
+                        //else
+                        //    sb.Append(pk.ToHex(256));
                     }
 
                     sb.Append((Char)ControlCodes.ETX);
@@ -184,8 +186,8 @@ public class FxLinksResponse : IAccessor
                     // 05FF
                     var sb = new StringBuilder(64);
 
-                    sb.Append(Host.ToString("X2"));
-                    sb.Append(PC.ToString("X2"));
+                    sb.Append(Station.ToString("X2"));
+                    sb.Append(PLC.ToString("X2"));
 
                     var hex = sb.ToString();
                     stream.Write(hex.GetBytes());

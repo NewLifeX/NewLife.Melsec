@@ -35,8 +35,7 @@ public class FxLinksMessage : IAccessor
     public String Address { get; set; }
 
     /// <summary>负载数据</summary>
-    [IgnoreDataMember]
-    public Packet Payload { get; set; }
+    public String Payload { get; set; }
 
     /// <summary>校验和。读取出来</summary>
     public Byte CheckSum { get; set; }
@@ -51,9 +50,9 @@ public class FxLinksMessage : IAccessor
     public override String ToString()
     {
         if (Code == ControlCodes.ENQ)
-            return $"{Command} ({Address}, {Payload?.ToHex()})";
+            return $"{Command} ({Address}, {Payload})";
         else
-            return $"{Code} ({Payload?.ToHex()})";
+            return $"{Code} ({Payload})";
     }
     #endregion
 
@@ -74,8 +73,8 @@ public class FxLinksMessage : IAccessor
                     // 05FFWR0D02100132
                     var hex = stream.ReadBytes(-1).ToStr();
 
-                    Station = Convert.ToByte(hex[..2], 16);
-                    PLC = Convert.ToByte(hex[2..4], 16);
+                    Station = hex.ToByte(0);
+                    PLC = hex.ToByte(2);
 
                     Command = hex[4..6];
                     Wait = Convert.ToByte(hex[6..7], 16);
@@ -83,9 +82,17 @@ public class FxLinksMessage : IAccessor
                     Address = hex[7] + hex[8..12].TrimStart('0');
 
                     var len = hex.Length - HEADER05;
-                    if (len > 0) Payload = hex.Substring(12, len).ToHex();
+                    if (len > 0)
+                    {
+                        Payload = hex.Substring(12, len);
+                        //var str = hex.Substring(12, len);
+                        //if (Command == "BW")
+                        //    Payload = str.ToArray().Select(e => Convert.ToByte(e + "", 16)).ToArray();
+                        //else
+                        //    Payload = str.ToHex();
+                    }
 
-                    CheckSum = Convert.ToByte(hex[^2..], 16);
+                    CheckSum = hex[^2..].ToByte(0);
                     CheckSum2 = (Byte)hex.ToArray().Take(hex.Length - 2).Sum(e => e);
 
                     break;
@@ -122,7 +129,27 @@ public class FxLinksMessage : IAccessor
                     sb.Append(addr);
 
                     var pk = Payload;
-                    if (pk != null && pk.Total > 0) sb.Append(pk.ToHex(256));
+                    if (pk != null)
+                    {
+                        //var buf = pk.ReadBytes();
+                        //for (var i = 0; i < buf.Length; i++)
+                        //{
+                        //    sb.Append((Char)buf[i]);
+                        //}
+                        sb.Append(pk);
+
+                        //if (Command == "BW")
+                        //{
+                        //    var buf = pk.ReadBytes();
+                        //    for (var i = 0; i < buf.Length; i++)
+                        //    {
+                        //        //sb.Append(Convert.ToString(buf[i], 16));
+                        //        sb.Append((Char)buf[i]);
+                        //    }
+                        //}
+                        //else
+                        //    sb.Append(pk.ToHex(256));
+                    }
 
                     var sum = 0;
                     for (var i = 0; i < sb.Length; i++)
@@ -163,8 +190,8 @@ public class FxLinksMessage : IAccessor
     {
         var msg = new FxLinksResponse
         {
-            Host = Station,
-            PC = PLC,
+            Station = Station,
+            PLC = PLC,
             Command = Command,
         };
 

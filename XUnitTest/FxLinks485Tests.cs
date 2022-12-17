@@ -25,7 +25,7 @@ public class FxLinks485Tests
         Assert.Equal("BR", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("M103", msg.Address);
-        Assert.Equal("01", msg.Payload.ToHex());
+        Assert.Equal("01", msg.Payload);
         Assert.Equal(0x27, msg.CheckSum);
         Assert.Equal(0x27, msg.CheckSum2);
         Assert.Equal("BR (M103, 01)", msg.ToString());
@@ -43,10 +43,10 @@ public class FxLinks485Tests
         Assert.True(r);
 
         Assert.Equal(ControlCodes.STX, rs.Code);
-        Assert.Equal("01", rs.Payload.ToHex());
+        Assert.Equal("1", rs.Payload);
         Assert.Equal(0x25, rs.CheckSum);
         Assert.Equal(0x25, rs.CheckSum2);
-        Assert.Equal("STX (01)", rs.ToString());
+        Assert.Equal("STX (1)", rs.ToString());
 
         pk = rs.ToPacket();
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
@@ -70,7 +70,7 @@ public class FxLinks485Tests
         Assert.Equal("WR", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("M103", msg.Address);
-        Assert.Equal("01", msg.Payload.ToHex());
+        Assert.Equal("01", msg.Payload);
         Assert.Equal(0x3C, msg.CheckSum);
         Assert.Equal(0x3C, msg.CheckSum2);
         Assert.Equal("WR (M103, 01)", msg.ToString());
@@ -88,10 +88,10 @@ public class FxLinks485Tests
         Assert.True(r);
 
         Assert.Equal(ControlCodes.STX, rs.Code);
-        Assert.Equal("01", rs.Payload.ToHex());
+        Assert.Equal("1", rs.Payload);
         Assert.Equal(0x25, rs.CheckSum);
         Assert.Equal(0x25, rs.CheckSum2);
-        Assert.Equal("STX (01)", rs.ToString());
+        Assert.Equal("STX (1)", rs.ToString());
 
         pk = rs.ToPacket();
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
@@ -115,10 +115,10 @@ public class FxLinks485Tests
         Assert.Equal("BW", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("M103", msg.Address);
-        Assert.Equal("01", msg.Payload.ToHex());
+        Assert.Equal("011", msg.Payload);
         Assert.Equal(0x5D, msg.CheckSum);
         Assert.Equal(0x5D, msg.CheckSum2);
-        Assert.Equal("BW (M103, 01)", msg.ToString());
+        Assert.Equal("BW (M103, 011)", msg.ToString());
 
         var pk = msg.ToPacket();
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
@@ -126,17 +126,14 @@ public class FxLinks485Tests
         str = "06 30 35 46 46";
         dt = str.ToHex();
         v = dt.ReadBytes(1).ToStr();
-        Assert.Equal("05FF1\u000325", v);
+        Assert.Equal("05FF", v);
 
         var rs = msg.CreateReply();
         r = rs.Read(new MemoryStream(dt), null);
         Assert.True(r);
 
-        Assert.Equal(ControlCodes.STX, rs.Code);
-        Assert.Equal("01", rs.Payload.ToHex());
-        Assert.Equal(0x25, rs.CheckSum);
-        Assert.Equal(0x25, rs.CheckSum2);
-        Assert.Equal("STX (01)", rs.ToString());
+        Assert.Equal(ControlCodes.ACK, rs.Code);
+        Assert.Equal("ACK ()", rs.ToString());
 
         pk = rs.ToPacket();
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));

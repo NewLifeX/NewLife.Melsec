@@ -27,7 +27,7 @@ public class FxLinksMessageTests
         Assert.Equal("WR", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("D210", msg.Address);
-        Assert.Equal("01", msg.Payload.ToHex());
+        Assert.Equal("01", msg.Payload);
         Assert.Equal(0x32, msg.CheckSum);
         Assert.Equal(0x32, msg.CheckSum2);
         Assert.Equal("WR (D210, 01)", msg.ToString());
@@ -50,9 +50,9 @@ public class FxLinksMessageTests
         Assert.True(rs);
 
         Assert.Equal(ControlCodes.STX, msg.Code);
-        Assert.Equal(5, msg.Host);
-        Assert.Equal(0xFF, msg.PC);
-        Assert.Equal("0001", msg.Payload.ToHex());
+        Assert.Equal(5, msg.Station);
+        Assert.Equal(0xFF, msg.PLC);
+        Assert.Equal("0001", msg.Payload);
         Assert.Equal(0xB5, msg.CheckSum);
         Assert.Equal(0xB5, msg.CheckSum2);
         Assert.Equal("STX (0001)", msg.ToString());
@@ -80,7 +80,7 @@ public class FxLinksMessageTests
         Assert.Equal("BW", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("M103", msg.Address);
-        Assert.Equal("000101", msg.Payload.ToHex());
+        Assert.Equal("000101", msg.Payload);
         Assert.Equal(0xED, msg.CheckSum);
         Assert.Equal(0xED, msg.CheckSum2);
         Assert.Equal("BW (M103, 000101)", msg.ToString());
@@ -133,7 +133,7 @@ public class FxLinksMessageTests
         Assert.Equal("WW", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("D210", msg.Address);
-        Assert.Equal("010001", msg.Payload.ToHex());
+        Assert.Equal("010001", msg.Payload);
         Assert.Equal(0xF8, msg.CheckSum);
         Assert.Equal(0xF8, msg.CheckSum2);
         Assert.Equal("WW (D210, 010001)", msg.ToString());
@@ -156,8 +156,8 @@ public class FxLinksMessageTests
         Assert.True(rs);
 
         Assert.Equal(ControlCodes.ACK, msg.Code);
-        Assert.Equal(5, msg.Host);
-        Assert.Equal(0xFF, msg.PC);
+        Assert.Equal(5, msg.Station);
+        Assert.Equal(0xFF, msg.PLC);
         Assert.Null(msg.Payload);
         Assert.Equal(0, msg.CheckSum);
         Assert.Equal(0, msg.CheckSum2);
@@ -186,7 +186,7 @@ public class FxLinksMessageTests
         Assert.Equal("WW", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("D240", msg.Address);
-        Assert.Equal("00010001", msg.Payload.ToHex());
+        Assert.Equal("00010001", msg.Payload);
         Assert.Equal(0x5B, msg.CheckSum);
         Assert.Equal(0x5B, msg.CheckSum2);
         Assert.Equal("WW (D240, 00010001)", msg.ToString());
@@ -210,7 +210,7 @@ public class FxLinksMessageTests
     //    Assert.Equal(ControlCodes.STX, msg.Code);
     //    Assert.Equal(5, msg.Host);
     //    Assert.Equal(0xFF, msg.PC);
-    //    Assert.Equal("0002", msg.Payload.ToHex());
+    //    Assert.Equal("0002", msg.Payload);
     //    Assert.Equal(0, msg.CheckSum);
     //    Assert.Equal(0, msg.CheckSum2);
     //    Assert.Equal("ACK ()", msg.ToString());
@@ -238,7 +238,7 @@ public class FxLinksMessageTests
         Assert.Equal("WW", msg.Command);
         Assert.Equal(0, msg.Wait);
         Assert.Equal("D212", msg.Address);
-        Assert.Equal("0001003C", msg.Payload.ToHex());
+        Assert.Equal("0001003C", msg.Payload);
         Assert.Equal(0x6F, msg.CheckSum);
         Assert.Equal(0x6F, msg.CheckSum2);
         Assert.Equal("WW (D212, 0001003C)", msg.ToString());
@@ -286,12 +286,12 @@ public class FxLinksMessageTests
         Assert.True(rs);
 
         Assert.Equal(ControlCodes.STX, msg.Code);
-        Assert.Equal(5, msg.Host);
-        Assert.Equal(0xFF, msg.PC);
-        Assert.Equal("00", msg.Payload.ToHex());
+        Assert.Equal(5, msg.Station);
+        Assert.Equal(0xFF, msg.PLC);
+        Assert.Equal("0", msg.Payload);
         Assert.Equal(0x24, msg.CheckSum);
         Assert.Equal(0x24, msg.CheckSum2);
-        Assert.Equal("STX (00)", msg.ToString());
+        Assert.Equal("STX (0)", msg.ToString());
 
         var pk = msg.ToPacket();
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
@@ -306,8 +306,8 @@ public class FxLinksMessageTests
         //Assert.True(rs.Reply);
         //Assert.Equal(msg.Command, rs.Command);
         Assert.NotNull(rs);
-        Assert.Equal(msg.PLC, rs.PC);
-        Assert.Equal(msg.Station, rs.Host);
+        Assert.Equal(msg.PLC, rs.PLC);
+        Assert.Equal(msg.Station, rs.Station);
     }
 
     //[Fact]

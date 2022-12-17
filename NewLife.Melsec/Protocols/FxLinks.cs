@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO.Ports;
 using System.Runtime.CompilerServices;
+using System.Text;
 using NewLife.Data;
 using NewLife.Log;
 
@@ -94,7 +95,7 @@ public class FxLinks : DisposeBase
     /// <param name="address">地址。例如0x0002</param>
     /// <param name="data">数据</param>
     /// <returns>返回响应消息的负载部分</returns>
-    public virtual FxLinksResponse SendCommand(String command, Byte host, String address, Packet data)
+    public virtual FxLinksResponse SendCommand(String command, Byte host, String address, String data)
     {
         var msg = new FxLinksMessage
         {
@@ -222,10 +223,10 @@ public class FxLinks : DisposeBase
         using var span = Tracer?.NewSpan("fxlinks:ReadBit", $"host={host} address={address} count={count}");
         try
         {
-            var rs = SendCommand("BR", host, address, new[] { count });
-            if (rs == null) return null;
+            var rs = SendCommand("BR", host, address, count.ToHexChars());
+            if (rs == null || rs.Payload.IsNullOrEmpty()) return null;
 
-            return rs.Payload?.ReadBytes();
+            return rs.Payload.ToBytes();
         }
         catch (Exception ex)
         {
@@ -244,16 +245,14 @@ public class FxLinks : DisposeBase
         using var span = Tracer?.NewSpan("fxlinks:ReadWord", $"host={host} address={address} count={count}");
         try
         {
-            var rs = SendCommand("WR", host, address, new[] { count });
-            if (rs == null) return null;
+            var rs = SendCommand("WR", host, address, count.ToHexChars());
+            if (rs == null || rs.Payload.IsNullOrEmpty()) return null;
 
-            var buf = rs.Payload?.ReadBytes();
-            if (buf == null) return null;
-
-            var us = new UInt16[buf.Length / 2];
+            var str = rs.Payload;
+            var us = new UInt16[str.Length / 4];
             for (var i = 0; i < us.Length; i++)
             {
-                us[0] = buf.ToUInt16(i * 2, false);
+                us[i] = str.Substring(i * 4, 4).ToHex().ToUInt16(0, false);
             }
 
             return us;
@@ -296,14 +295,16 @@ public class FxLinks : DisposeBase
         using var span = Tracer?.NewSpan("fxlinks:WriteBit", $"host={host} address={address} value=({values.Join(",")})");
         try
         {
-            var buf = new Byte[2 + values.Length];
-            buf.Write((UInt16)values.Length, 0, false);
+            // 1字节（2字符）的点位数
+            // 后续每个点位1个字符
+            var sb = new StringBuilder();
+            sb.Append(((Byte)values.Length).ToHexChars());
             for (var i = 0; i < values.Length; i++)
             {
-                buf[2 + i] = (Byte)(values[i] != 0 ? 1 : 0);
+                sb.Append(values[i] != 0 ? '1' : '0');
             }
 
-            var rs = SendCommand("BW", host, address, buf);
+            var rs = SendCommand("BW", host, address, sb.ToString());
             if (rs == null) return -1;
             if (rs.Code == ControlCodes.NAK) throw new Exception($"WriteBit({address}, {values.Join(",")}) get {rs.Code}");
             if (rs.Code != ControlCodes.ACK) return -1;
@@ -327,15 +328,16 @@ public class FxLinks : DisposeBase
         using var span = Tracer?.NewSpan("fxlinks:WriteWord", $"host={host} address={address} value=({values.Join(",")})");
         try
         {
-            var buf = new Byte[2 + values.Length * 2];
-            buf.Write((UInt16)values.Length, 0, false);
+            // 1字节（2字符）的点位数
+            // 后续每个点位1个字符
+            var sb = new StringBuilder();
+            sb.Append(((Byte)values.Length).ToHexChars());
             for (var i = 0; i < values.Length; i++)
             {
-                buf[2 + i] = (Byte)(values[i] != 0 ? 1 : 0);
-                buf.Write(values[i], 2 + i * 2, false);
+                sb.Append(values[i].ToString("X2"));
             }
 
-            var rs = SendCommand("WW", host, address, buf);
+            var rs = SendCommand("WW", host, address, sb.ToString());
             if (rs == null) return -1;
             if (rs.Code == ControlCodes.NAK) throw new Exception($"WriteWord({address}, {values.Join(",")}) get {rs.Code}");
             if (rs.Code != ControlCodes.ACK) return -1;
