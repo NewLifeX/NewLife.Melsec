@@ -194,6 +194,7 @@ public class FxLinksDriver : DriverBase
         }
         list = list.OrderBy(e => e.Code).ThenBy(e => e.Address).ThenByDescending(e => e.Count).ToList();
 
+        var step = p.BatchStep > 1 ? p.BatchStep : 1;
         var k = 1;
         var rs = new List<Segment>();
         var prv = list[0];
@@ -203,12 +204,12 @@ public class FxLinksDriver : DriverBase
             var cur = list[i];
 
             // 前一段末尾碰到了当前段开始，可以合并
-            var flag = prv.Address + prv.Count >= cur.Address;
-            // 如果是读取位存储区，间隔小于8都可以合并
-            if (!flag && cur.Code.EqualIgnoreCase("X", "Y", "M"))
-            {
-                flag = prv.Address + prv.Count + 8 > cur.Address;
-            }
+            var flag = prv.Address + prv.Count + step > cur.Address;
+            //// 如果是读取位存储区，间隔小于8都可以合并
+            //if (!flag && cur.Code.EqualIgnoreCase("X", "Y", "M"))
+            //{
+            //    flag = prv.Address + prv.Count + 8 > cur.Address;
+            //}
 
             // 前一段末尾碰到了当前段开始，可以合并
             if (flag && prv.Code == cur.Code)

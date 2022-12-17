@@ -211,14 +211,20 @@ public class FxLinksDriverTests
             new PointModel { Name = "p20", Address = "Y14", }
         };
 
-        // 凑批成为一个
+        // 无法合并
         var segs = driver.BuildSegments(points, new FxLinksParameter());
+        Assert.Equal(6, segs.Count);
+        Assert.Equal(0, segs[0].Address);
+        Assert.Equal(1, segs[0].Count);
+
+        // 凑批成为一个
+        segs = driver.BuildSegments(points, new FxLinksParameter { BatchStep = 4 });
         Assert.Equal(1, segs.Count);
         Assert.Equal(0, segs[0].Address);
         Assert.Equal(15, segs[0].Count);
 
         // 每4个一批，凑成3批
-        segs = driver.BuildSegments(points, new FxLinksParameter { BatchSize = 4 });
+        segs = driver.BuildSegments(points, new FxLinksParameter { BatchStep = 4, BatchSize = 4 });
         Assert.Equal(2, segs.Count);
         Assert.Equal(10, segs[1].Address);
         Assert.Equal(5, segs[1].Count);
