@@ -274,8 +274,8 @@ public class FxLinksDriver : DriverBase
                     if (seg.Bits.Length >= offset + count)
                         dic[point.Name] = seg.Bits[offset];
                 }
-                else
-                    throw new NotSupportedException($"无法拆分{code}");
+                //else
+                //    throw new NotSupportedException($"无法拆分{code}");
             }
         }
         return dic;
