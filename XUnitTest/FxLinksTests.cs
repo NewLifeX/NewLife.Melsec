@@ -104,7 +104,7 @@ public class FxLinksTests
 
         var rs = (Int32)link.Write("WW", 1, "D202", new UInt16[] { 1 });
         Assert.NotEqual(-1, rs);
-        Assert.Equal(0, rs);
+        Assert.Equal(1, rs);
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public class FxLinksTests
 
         // 读取
         var rs = link.WriteBit(1, "D202", 0xFF00);
-        Assert.Equal(0, rs);
+        Assert.Equal(1, rs);
     }
 
     [Fact]
@@ -140,6 +140,6 @@ public class FxLinksTests
 
         // 读取
         var rs = link.WriteWord(1, "D202", 0x1234);
-        Assert.Equal(0, rs);
+        Assert.Equal(1, rs);
     }
 }

@@ -236,7 +236,7 @@ public class FxLinks : DisposeBase
 
             var result = rs.Payload.ToBytes();
 
-            span?.AppendTag(result.ToHex());
+            span?.AppendTag(result.Join(","));
 
             return result;
         }

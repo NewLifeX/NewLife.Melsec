@@ -254,11 +254,8 @@ public class FxLinksDriver : DriverBase
             var cmd = point.Address[..1];
             var addr = point.Address[1..].ToInt();
 
-            // 物模型配置必须跟点位一致，不允许一个设备属性对应多个寄存器
-            var count = 1;
-
             // 找到片段
-            var seg = segments.FirstOrDefault(e => e.Address <= addr && addr + count <= e.Address + e.Count);
+            var seg = segments.FirstOrDefault(e => e.Code == cmd && e.Address <= addr && addr < e.Address + e.Count);
             if (seg != null)
             {
                 var code = seg.Code;
@@ -266,14 +263,14 @@ public class FxLinksDriver : DriverBase
                 {
                     // 校验数据完整性
                     var offset = addr - seg.Address;
-                    if (seg.Values.Length >= offset + count)
+                    if (seg.Values.Length > offset)
                         dic[point.Name] = seg.Values[offset];
                 }
                 else if (seg.Bits != null)
                 {
                     // 校验数据完整性
                     var offset = addr - seg.Address;
-                    if (seg.Bits.Length >= offset + count)
+                    if (seg.Bits.Length > offset)
                         dic[point.Name] = seg.Bits[offset];
                 }
                 //else

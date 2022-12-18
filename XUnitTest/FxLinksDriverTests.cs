@@ -209,7 +209,7 @@ public class FxLinksDriverTests
         };
 
         var rs = (Int32)driver.Write(node, pt, "15");
-        Assert.Equal(0, rs);
+        Assert.Equal(1, rs);
     }
 
     [Fact]
