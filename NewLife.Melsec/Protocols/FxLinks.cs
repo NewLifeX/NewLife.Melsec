@@ -160,6 +160,14 @@ public class FxLinks : DisposeBase
 
             Log?.Debug("<= {0}", rs);
 
+            // 检查功能码
+            if (rs.Code == ControlCodes.NAK)
+            {
+                var str = rs.Payload;
+                var code = str != null && str.Length >= 2 ? str.ToByte(0) : 0;
+                throw new FxLinksException((ErrorCodes)code, $"{message} occure error");
+            }
+
             return rs;
         }
         catch (Exception ex)

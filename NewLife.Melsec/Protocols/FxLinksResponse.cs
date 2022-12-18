@@ -110,6 +110,9 @@ public class FxLinksResponse : IAccessor
                     Station = hex.ToByte(0);
                     PLC = hex.ToByte(2);
 
+                    // 如果还有数据，作为负载。一般ACK后面没有了，而NAK后面有错误码
+                    if (hex.Length > 4) Payload = hex[4..];
+
                     break;
                 }
 

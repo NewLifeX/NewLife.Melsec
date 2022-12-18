@@ -219,6 +219,8 @@ public class FxLinksMessage : IAccessor
                 sb.Append("ENQ-");
             else if (ch == 0x06)
                 sb.Append("ACK-");
+            else if (ch == 0x15)
+                sb.Append("NAK-");
             else
                 sb.Append(ch);
         }
