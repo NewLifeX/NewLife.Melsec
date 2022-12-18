@@ -234,7 +234,11 @@ public class FxLinks : DisposeBase
             var rs = SendCommand("BR", host, address, count.ToHexChars());
             if (rs == null || rs.Payload.IsNullOrEmpty()) return null;
 
-            return rs.Payload.ToBytes();
+            var result = rs.Payload.ToBytes();
+
+            span?.AppendTag(result.ToHex());
+
+            return result;
         }
         catch (Exception ex)
         {
@@ -262,6 +266,8 @@ public class FxLinks : DisposeBase
             {
                 us[i] = str.Substring(i * 4, 4).ToHex().ToUInt16(0, false);
             }
+
+            span?.AppendTag(us);
 
             return us;
         }
@@ -317,7 +323,7 @@ public class FxLinks : DisposeBase
             if (rs.Code == ControlCodes.NAK) throw new Exception($"WriteBit({address}, {values.Join(",")}) get {rs.Code}");
             if (rs.Code != ControlCodes.ACK) return -1;
 
-            return 0;
+            return values.Length;
         }
         catch (Exception ex)
         {
@@ -350,7 +356,7 @@ public class FxLinks : DisposeBase
             if (rs.Code == ControlCodes.NAK) throw new Exception($"WriteWord({address}, {values.Join(",")}) get {rs.Code}");
             if (rs.Code != ControlCodes.ACK) return -1;
 
-            return 0;
+            return values.Length;
         }
         catch (Exception ex)
         {
