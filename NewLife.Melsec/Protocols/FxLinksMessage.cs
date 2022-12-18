@@ -79,7 +79,9 @@ public class FxLinksMessage : IAccessor
                     Command = hex[4..6];
                     Wait = Convert.ToByte(hex[6..7], 16);
 
+                    // 注意点位Y0
                     Address = hex[7] + hex[8..12].TrimStart('0');
+                    if (Address.Length == 1) Address += '0';
 
                     var len = hex.Length - HEADER05;
                     if (len > 0)

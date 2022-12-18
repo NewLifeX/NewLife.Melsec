@@ -93,6 +93,55 @@ public class FxLinksDriverTests
     }
 
     [Fact]
+    public void ReadBitTest()
+    {
+        var driver = new FxLinksDriver();
+
+        var p = new FxLinksParameter { Host = 5 };
+        var dic = p.ToDictionary();
+
+        var node = driver.Open(null, dic);
+
+        // 模拟FxLinks
+        var mb = new Mock<FxLinks> { CallBase = true };
+        mb.Setup(e => e.SendCommand("BR", 5, "Y0", "08"))
+            .Returns(new FxLinksResponse { Code = ControlCodes.ACK, Payload = "11111010" });
+        driver.Link = mb.Object;
+
+        var points = new List<IPoint>();
+        for (var i = 0; i < 8; i++)
+        {
+            var pt = new PointModel
+            {
+                Name = "p" + i,
+                Address = "Y" + i,
+            };
+
+            points.Add(pt);
+        }
+
+        // 读取
+        var rs = driver.Read(node, points.ToArray());
+        Assert.NotNull(rs);
+        Assert.Equal(8, rs.Count);
+
+        for (var i = 0; i < 8; i++)
+        {
+            var name = "p" + i;
+            Assert.True(rs.ContainsKey(name));
+        }
+
+        Assert.Equal((Byte)1, rs["p0"]);
+        Assert.Equal((Byte)1, rs["p1"]);
+        Assert.Equal((Byte)1, rs["p2"]);
+        Assert.Equal((Byte)1, rs["p3"]);
+        Assert.Equal((Byte)1, rs["p4"]);
+        Assert.Equal((Byte)0, rs["p5"]);
+        Assert.Equal((Byte)1, rs["p6"]);
+        Assert.Equal((Byte)0, rs["p7"]);
+    }
+
+    [Fact]
     public void ReadRegister()
     {
         var driver = new FxLinksDriver();
