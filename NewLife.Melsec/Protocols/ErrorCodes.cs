@@ -3,43 +3,36 @@
 /// <summary>错误码</summary>
 public enum ErrorCodes
 {
-    /// <summary>命令超时</summary>
-    /// <remarks>After master station send request to save station, no answer passing comms time-out.</remarks>
-    CommsTimeout = 0x01,
+    ///// <summary>常规错误</summary>
+    //Normal = 0x00,
 
-    /// <summary>站号错误</summary>
-    /// <remarks>Station No. is not agreement between the master station and the slave station.</remarks>
-    StationError = 0x02,
+    ///// <summary>常规错误</summary>
+    //Normal2 = 0x01,
 
-    /// <summary>通信计数器错误</summary>
-    /// <remarks>Communication counter is not agreement between the master station and the slave station.</remarks>
-    CommsCounterError = 0x03,
-
-    /// <summary>通信格式错误</summary>
-    /// <remarks>Communication format is not right from slave station.</remarks>
-    CommsFormatError = 0x04,
-
-    /// <summary>主机通信超时</summary>
-    /// <remarks>After slave station send answer to master station, master station do not send request to next slave station.</remarks>
-    MasterCommsTimeoutError = 0x11,
-
-    /// <summary>主机通信格式错误</summary>
-    /// <remarks>Communication format is not right from master station./remarks>
-    MasterCommsFormatError = 0x14,
-
-    /// <summary>从机不存在</summary>
-    /// <remarks>The station No. is not in this network.</remarks>
-    NoSlave = 0x21,
-
-    /// <summary>站号错误</summary>
-    /// <remarks>Station No. is not agreement between the master station and the slave station.</remarks>
-    StationError2 = 0x22,
+    /// <summary>校验错误</summary>
+    SumError = 0x02,
 
     /// <summary>通信计数器错误</summary>
-    /// <remarks>Communication counter is not agreement between the master station and the slave station.</remarks>
-    CommsCounterError2 = 0x23,
+    /// <remarks>Protocol error (the communication protocol does not conform to the format selected with D8120)</remarks>
+    ProtocolError = 0x03,
 
-    /// <summary>未收到通信参数</summary>
-    /// <remarks>When slave station receive request from master station before communication parameter.</remarks>
-    NotReceiveCommsParameter = 0x31,
+    /// <summary>字符区域错误</summary>
+    /// <remarks>Character area error (the character area is incorrectly defined, or the specified command is not available)</remarks>
+    CharacterAreaError = 0x06,
+
+    /// <summary>字符区域错误</summary>
+    /// <remarks>Character error (the data to be written to a device consists of ASCII codes other than hexadecimal codes)</remarks>
+    CharacterError = 0x07,
+
+    /// <summary>PLC号错误</summary>
+    /// <remarks>PLC number error (the PLC number is not set to “FF” or not available from this station)</remarks>
+    PLCError = 0x0A,
+
+    /// <summary>PLC号错误</summary>
+    /// <remarks>PLC number error (the PLC number is not set to “FF” or not available from this station)</remarks>
+    PLCError2 = 0x10,
+
+    /// <summary>远程错误</summary>
+    /// <remarks>Remote error (remote run/stop is disabled)</remarks>
+    RemoteError = 0x18,
 }
