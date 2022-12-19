@@ -360,17 +360,17 @@ public class FxLinksDriver : DriverBase
             case TypeCode.Boolean:
             case TypeCode.Byte:
             case TypeCode.SByte:
-                return data.ToBoolean() ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+                return data.ToBoolean() ? new[] { (UInt16)0x01 } : new[] { (UInt16)0x00 };
             case TypeCode.Int16:
             case TypeCode.UInt16:
             case TypeCode.Int32:
             case TypeCode.UInt32:
-                return data.ToInt() > 0 ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+                return data.ToInt() > 0 ? new[] { (UInt16)0x01 } : new[] { (UInt16)0x00 };
             case TypeCode.Int64:
             case TypeCode.UInt64:
-                return data.ToLong() > 0 ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+                return data.ToLong() > 0 ? new[] { (UInt16)0x01 } : new[] { (UInt16)0x00 };
             default:
-                return data.ToBoolean() ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+                return data.ToBoolean() ? new[] { (UInt16)0x01 } : new[] { (UInt16)0x00 };
         }
     }
 
@@ -397,7 +397,7 @@ public class FxLinksDriver : DriverBase
             case TypeCode.Boolean:
             case TypeCode.Byte:
             case TypeCode.SByte:
-                return data.ToBoolean() ? new[] { (UInt16)0xFF00 } : new[] { (UInt16)0x00 };
+                return data.ToBoolean() ? new[] { (UInt16)0x01 } : new[] { (UInt16)0x00 };
             case TypeCode.Int16:
             case TypeCode.UInt16:
                 return new[] { (UInt16)data.ToInt() };
