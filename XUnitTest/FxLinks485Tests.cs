@@ -36,7 +36,7 @@ public class FxLinks485Tests
 
         str = "02 30 35 46 46 31 03 32 35";
         dt = str.ToHex();
-        v = dt.ReadBytes(1).ToStr();
+        v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FF1\u000325", v);
 
         var rs = msg.CreateReply();
@@ -81,7 +81,7 @@ public class FxLinks485Tests
 
         str = "02 30 35 46 46 31 03 32 35";
         dt = str.ToHex();
-        v = dt.ReadBytes(1).ToStr();
+        v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FF1\u000325", v);
 
         var rs = msg.CreateReply();
@@ -140,7 +140,7 @@ public class FxLinks485Tests
 
         str = "06 30 35 46 46";
         dt = str.ToHex();
-        v = dt.ReadBytes(1).ToStr();
+        v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FF", v);
 
         var rs = msg.CreateReply();
@@ -195,7 +195,7 @@ public class FxLinks485Tests
 
         str = "06 30 35 46 46";
         dt = str.ToHex();
-        v = dt.ReadBytes(1).ToStr();
+        v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FF", v);
 
         var rs = msg.CreateReply();
@@ -236,7 +236,7 @@ public class FxLinks485Tests
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
 
         dt = response.ToHex();
-        v = dt.ReadBytes(1).ToStr();
+        v = dt.ReadBytes(1, -1).ToStr();
         //Assert.Equal("05FF1\u000325", v);
 
         var rs = msg.CreateReply();
@@ -280,7 +280,7 @@ public class FxLinks485Tests
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
 
         dt = response.ToHex();
-        v = dt.ReadBytes(1).ToStr();
+        v = dt.ReadBytes(1, -1).ToStr();
 
         var rs = msg.CreateReply();
         r = rs.Read(new MemoryStream(dt), null);
@@ -336,7 +336,7 @@ public class FxLinks485Tests
 
         var str = "06 30 35 46 46";
         dt = str.ToHex();
-        v = dt.ReadBytes(1).ToStr();
+        v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FF", v);
 
         var rs = msg.CreateReply();

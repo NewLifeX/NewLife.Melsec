@@ -41,7 +41,7 @@ public class FxLinksMessageTests
         Assert.Equal(dt.ToHex("-"), pk.ToHex(256, "-"));
 
         dt = response.ToHex();
-        v = dt.ReadBytes(1).ToStr();
+        v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal(hex2, v);
 
         var rs = msg.CreateReply();
@@ -63,7 +63,7 @@ public class FxLinksMessageTests
         // 05FFWR0D02100132
         var str = "05 30 35 46 46 57 52 30 44 30 32 31 30 30 31 33 32";
         var dt = str.ToHex();
-        var v = dt.ReadBytes(1).ToStr();
+        var v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FFWR0D02100132", v);
 
         var msg = new FxLinksMessage();
@@ -116,7 +116,7 @@ public class FxLinksMessageTests
         // 05FFBW0M0103000101ED
         var str = "05-30-35-46-46-42-57-30-4D-30-31-30-33-30-30-30-31-30-31-45-44";
         var dt = str.ToHex();
-        var v = dt.ReadBytes(1).ToStr();
+        var v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FFBW0M0103000101ED", v);
 
         var msg = new FxLinksMessage();
@@ -144,7 +144,7 @@ public class FxLinksMessageTests
     //    // 05FF0
     //    var str = "02-30-35-7F-5E-77-6C-23-7F";
     //    var dt = str.ToHex();
-    //    var v = dt.ReadBytes(1).ToStr();
+    //    var v = dt.ReadBytes(1, -1).ToStr();
     //    Assert.Equal("05\u007Fw0001\u0003B5", v);
 
     //    var msg = new FxLinksResponse();
@@ -169,7 +169,7 @@ public class FxLinksMessageTests
         // 05FFWW0D0210010001F8
         var str = "05 30 35 46 46 57 57 30 44 30 32 31 30 30 31 30 30 30 31 46 38";
         var dt = str.ToHex();
-        var v = dt.ReadBytes(1).ToStr();
+        var v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FFWW0D0210010001F8", v);
 
         var msg = new FxLinksMessage();
@@ -197,7 +197,7 @@ public class FxLinksMessageTests
         // 05FF
         var str = "06 30 35 46 46";
         var dt = str.ToHex();
-        var v = dt.ReadBytes(1).ToStr();
+        var v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FF", v);
 
         var msg = new FxLinksResponse();
@@ -222,7 +222,7 @@ public class FxLinksMessageTests
         // 05FFWW0D0240000100015B
         var str = "05-30-35-46-46-57-57-30-44-30-32-34-30-30-30-30-31-30-30-30-31-35-42";
         var dt = str.ToHex();
-        var v = dt.ReadBytes(1).ToStr();
+        var v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FFWW0D0240000100015B", v);
 
         var msg = new FxLinksMessage();
@@ -249,7 +249,7 @@ public class FxLinksMessageTests
     //{
     //    var str = "02-30-35-46-46-30-30-30-32-23-5F-7F";
     //    var dt = str.ToHex();
-    //    var v = dt.ReadBytes(1).ToStr();
+    //    var v = dt.ReadBytes(1, -1).ToStr();
     //    Assert.Equal("05FF0002\u0003B5", v);
 
     //    var msg = new FxLinksResponse();
@@ -274,7 +274,7 @@ public class FxLinksMessageTests
         // 05FFWW0D02120001003C6F
         var str = "05-30-35-46-46-57-57-30-44-30-32-31-32-30-30-30-31-30-30-33-43-36-46";
         var dt = str.ToHex();
-        var v = dt.ReadBytes(1).ToStr();
+        var v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FFWW0D02120001003C6F", v);
 
         var msg = new FxLinksMessage();
@@ -302,7 +302,7 @@ public class FxLinksMessageTests
     //    // 05FF0
     //    var str = "02-30-35-46-46-30-5F-7D";
     //    var dt = str.ToHex();
-    //    var v = dt.ReadBytes(1).ToStr();
+    //    var v = dt.ReadBytes(1, -1).ToStr();
     //    Assert.Equal("05FF0\u0003B5", v);
 
     //    var msg = new FxLinksResponse();
@@ -327,7 +327,7 @@ public class FxLinksMessageTests
         // STX-05FF0-ETX-24
         var str = "02-30-35-46-46-30-03-32-34";
         var dt = str.ToHex();
-        var v = dt.ReadBytes(1).ToStr();
+        var v = dt.ReadBytes(1, -1).ToStr();
         Assert.Equal("05FF0\u000324", v);
 
         var msg = new FxLinksResponse();

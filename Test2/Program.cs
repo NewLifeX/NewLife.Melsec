@@ -18,9 +18,9 @@ XTrace.UseConsole();
     var buf = "05 30 35 46 46 57 52 30 44 30 32 31 30 30 31 33 32".ToHex();
     XTrace.WriteLine("buf = {0}", buf.ToHex(" "));
 
-    var buf2 = buf.ReadBytes(1);
+    var buf2 = buf.ReadBytes(1, -1);
     XTrace.WriteLine("req = {0}", buf2.ToStr());
-    XTrace.WriteLine("res = {0}", "02 30 35 46 46 30 30 30 31 03 42 35".ToHex().ReadBytes(1).ToStr());
+    XTrace.WriteLine("res = {0}", "02 30 35 46 46 30 30 30 31 03 42 35".ToHex().ReadBytes(1, -1).ToStr());
 }
 
 {
@@ -33,9 +33,9 @@ XTrace.UseConsole();
     var buf = "05 30 35 46 46 57 57 30 44 30 32 31 30 30 31 30 30 30 31 46 38".ToHex();
     XTrace.WriteLine("buf = {0}", buf.ToHex(" "));
 
-    var buf2 = buf.ReadBytes(1);
+    var buf2 = buf.ReadBytes(1, -1);
     XTrace.WriteLine("req = {0}", buf2.ToStr());
-    XTrace.WriteLine("res = {0}", "06 30 35 46 46".ToHex().ReadBytes(1).ToStr());
+    XTrace.WriteLine("res = {0}", "06 30 35 46 46".ToHex().ReadBytes(1, -1).ToStr());
 }
 
 try
