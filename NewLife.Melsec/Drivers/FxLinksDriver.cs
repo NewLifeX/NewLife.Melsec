@@ -58,12 +58,12 @@ public class FxLinksDriver : DriverBase
     /// 打开通道。一个ModbusTcp设备可能分为多个通道读取，需要共用Tcp连接，以不同节点区分
     /// </summary>
     /// <param name="device">通道</param>
-    /// <param name="parameters">参数</param>
+    /// <param name="parameter">参数</param>
     /// <returns></returns>
-    public override INode Open(IDevice device, IDictionary<String, Object> parameters)
+    public override INode Open(IDevice device, IDriverParameter parameter)
     {
-        var p = JsonHelper.Convert<FxLinksParameter>(parameters);
-        if (p == null) throw new ArgumentException($"参数不合法：{parameters.ToJson()}");
+        var p = parameter as FxLinksParameter;
+        if (p == null) throw new ArgumentException($"参数不合法：{parameter.ToJson()}");
 
         if (p.Baudrate <= 0) p.Baudrate = 9600;
 

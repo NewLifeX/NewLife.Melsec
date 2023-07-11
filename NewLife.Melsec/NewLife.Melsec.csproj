@@ -37,16 +37,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Drivers\MelsecDriver.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="NewLife.Core" Version="10.3.2023.601" />
+    <PackageReference Include="NewLife.Core" Version="10.4.2023.707" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.IoT" Version="1.8.2023.511" />
-    <PackageReference Include="HslCommunication" Version="11.5.2" />
+    <PackageReference Include="NewLife.IoT" Version="1.8.2023.711" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net461'">
     <PackageReference Include="System.IO.Ports" Version="6.0.0" />

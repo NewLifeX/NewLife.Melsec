@@ -1,9 +1,6 @@
-﻿using System.Xml.Linq;
-using HslCommunication;
-using NewLife;
+﻿using NewLife;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
-using NewLife.IoT.ThingSpecification;
 using NewLife.Log;
 using NewLife.Melsec.Drivers;
 using NewLife.Net;
@@ -87,7 +84,8 @@ else if (mode == "2")
     pm.PortName = ps[idx];
 }
 
-var driver = new MelsecDriver();
+//var driver = new MelsecDriver();
+var driver = new FxLinksDriver();
 
 var node = driver.Open(null, pm);
 
