@@ -5,7 +5,7 @@ using NewLife.IoT.Drivers;
 namespace NewLife.Melsec.Drivers;
 
 /// <summary>三菱FxLinks参数</summary>
-public class FxLinksParameter : IDriverParameter
+public class FxLinksParameter : IDriverParameter, IDriverParameterKey
 {
     /// <summary>串口名称</summary>
     [Description("串口名称")]
@@ -46,4 +46,8 @@ public class FxLinksParameter : IDriverParameter
     /// <summary>批延迟。相邻请求之间的延迟时间，单位毫秒</summary>
     [Description("批延迟。相邻请求之间的延迟时间，单位毫秒")]
     public Int32 BatchDelay { get; set; }
+
+    /// <summary>获取驱动参数的唯一标识</summary>
+    /// <returns></returns>
+    public String GetKey() => PortName;
 }
