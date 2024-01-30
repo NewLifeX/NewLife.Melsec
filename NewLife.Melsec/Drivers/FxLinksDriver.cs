@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using System.Xml;
 using NewLife.IoT;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
@@ -8,6 +9,7 @@ using NewLife.Log;
 using NewLife.Melsec.Protocols;
 using NewLife.Reflection;
 using NewLife.Serialization;
+using NewLife.Xml;
 
 namespace NewLife.Melsec.Drivers;
 
@@ -30,12 +32,17 @@ public class FxLinksDriver : DriverBase
     /// 创建驱动参数对象，可序列化成Xml/Json作为该协议的参数模板
     /// </summary>
     /// <returns></returns>
-    public override IDriverParameter CreateParameter(String parameter) => new FxLinksParameter
+    public override IDriverParameter CreateParameter(String parameter)
     {
-        PortName = "COM1",
-        Baudrate = 9600,
-        Host = 1,
-    };
+        if (parameter.IsNullOrEmpty()) return new FxLinksParameter
+        {
+            PortName = "COM1",
+            Baudrate = 9600,
+            Host = 1,
+        };
+
+        return parameter.ToXmlEntity<FxLinksParameter>();
+    }
 
     /// <summary>
     /// 从点位中解析地址
@@ -62,6 +69,8 @@ public class FxLinksDriver : DriverBase
     /// <returns></returns>
     public override INode Open(IDevice device, IDriverParameter parameter)
     {
+        using var span = Tracer?.NewSpan("fxlinks:parameter", parameter.ToJson());
+
         var p = parameter as FxLinksParameter;
         if (p == null) throw new ArgumentException($"参数不合法：{parameter.ToJson()}");
 
