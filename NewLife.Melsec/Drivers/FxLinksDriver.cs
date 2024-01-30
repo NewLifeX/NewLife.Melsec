@@ -30,7 +30,7 @@ public class FxLinksDriver : DriverBase
     /// 创建驱动参数对象，可序列化成Xml/Json作为该协议的参数模板
     /// </summary>
     /// <returns></returns>
-    public override IDriverParameter GetDefaultParameter() => new FxLinksParameter
+    public override IDriverParameter CreateParameter(String parameter) => new FxLinksParameter
     {
         PortName = "COM1",
         Baudrate = 9600,

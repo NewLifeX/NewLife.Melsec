@@ -18,8 +18,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="10.4.2023.707" />
-    <PackageReference Include="System.IO.Ports" Version="7.0.0" />
+    <PackageReference Include="NewLife.Core" Version="10.6.2024.101" />
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

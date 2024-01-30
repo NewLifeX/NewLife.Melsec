@@ -54,7 +54,7 @@ public class FxLinksDriverTests
     {
         var driver = new FxLinksDriver();
 
-        var p = driver.GetDefaultParameter() as FxLinksParameter;
+        var p = driver.CreateParameter(null) as FxLinksParameter;
         var dic = p.ToDictionary();
 
         var node = driver.Open(null, dic);
@@ -144,7 +144,7 @@ public class FxLinksDriverTests
     {
         var driver = new FxLinksDriver();
 
-        var p = driver.GetDefaultParameter() as FxLinksParameter;
+        var p = driver.CreateParameter(null) as FxLinksParameter;
 
         var node = driver.Open(null, p);
 
@@ -282,7 +282,7 @@ public class FxLinksDriverTests
     {
         var driver = new FxLinksDriver();
 
-        var p = driver.GetDefaultParameter() as FxLinksParameter;
+        var p = driver.CreateParameter(null) as FxLinksParameter;
         var dic = p.ToDictionary();
 
         var node = driver.Open(null, dic);
@@ -330,7 +330,7 @@ public class FxLinksDriverTests
     {
         var driver = new FxLinksDriver();
 
-        var p = driver.GetDefaultParameter() as FxLinksParameter;
+        var p = driver.CreateParameter(null) as FxLinksParameter;
         var dic = p.ToDictionary();
 
         var node = driver.Open(null, dic);
