@@ -4,7 +4,7 @@
     <AssemblyTitle>三菱PLC协议</AssemblyTitle>
     <Description>三菱PLC协议</Description>
     <Company>新生命开发团队</Company>
-    <Copyright>©2002-2023 新生命开发团队</Copyright>
+    <Copyright>©2002-2024 新生命开发团队</Copyright>
     <VersionPrefix>1.2</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
@@ -45,11 +45,11 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="NewLife.Core" Version="10.6.2024.101" />
+    <PackageReference Include="NewLife.Core" Version="10.10.2024.507" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.IoT" Version="2.0.2024.101" />
+    <PackageReference Include="NewLife.IoT" Version="2.2.2024.501" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net461'">
     <PackageReference Include="System.IO.Ports" Version="6.0.0" />
