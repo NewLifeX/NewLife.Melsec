@@ -45,11 +45,11 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="NewLife.Core" Version="11.5.2025.629-beta0325" />
+    <PackageReference Include="NewLife.Core" Version="11.5.2025.701" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.IoT" Version="2.6.2025.630-beta1633" />
+    <PackageReference Include="NewLife.IoT" Version="2.6.2025.701" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net461'">
     <PackageReference Include="System.IO.Ports" Version="6.0.0" />
