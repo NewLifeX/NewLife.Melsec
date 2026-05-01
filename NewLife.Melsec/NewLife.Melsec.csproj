@@ -4,7 +4,7 @@
     <AssemblyTitle>三菱PLC协议</AssemblyTitle>
     <Description>三菱PLC协议</Description>
     <Company>新生命开发团队</Company>
-    <Copyright>©2002-2025 新生命开发团队</Copyright>
+    <Copyright>©2002-2026 新生命开发团队</Copyright>
     <VersionPrefix>1.2</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
@@ -27,7 +27,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Melsec</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>物联网;IoT;边缘计算;Edge;新生命团队;NewLife;PLC;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>FxLinks支持批量读取</PackageReleaseNotes>
+    <PackageReleaseNotes>升级到 v2.6 的 IoT 架构；提升系统稳定性和性能</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -41,15 +41,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.203">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="NewLife.Core" Version="11.5.2025.701" />
+    <PackageReference Include="NewLife.Core" Version="11.15.2026.501" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.IoT" Version="2.6.2025.701" />
+    <PackageReference Include="NewLife.IoT" Version="2.7.2026.501" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net461'">
     <PackageReference Include="System.IO.Ports" Version="6.0.0" />
