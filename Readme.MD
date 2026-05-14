@@ -11,12 +11,97 @@
 源码： https://github.com/NewLifeX/NewLife.Melsec  
 Nuget：NewLife.Melsec  
 
+## 协议支持
+
+| 协议 | 传输方式 | 适用 PLC 型号 | 完成状态 |
+|:---:|:---:|:---|:---:|
+| FxLinks（计算机链路） | RS-485 串口 | FX 系列（FX1S/FX1N/FX2N/FX3U 等） | ✅ 已完成 |
+| MC 3E 帧（二进制） | TCP/IP 以太网 | Q/iQ-R/L 系列、FX3U-ENET、FX5U 等 | ⬜ 规划中 |
+| MC 1E 帧 | TCP/IP 以太网 | A 系列（旧式兼容） | ⬜ 规划中 |
+| SLMP（3C/4C 帧） | TCP/IP 以太网 | iQ-R/iQ-F 系列（最新标准） | ⬜ 远期规划 |
+
 ## FxLinks协议
 FxLinks协议常用指令：
 1. ENQ05询问，BR位读取，BW字读取，BW位写入，WW字写入，以校验和结束
 2. STX02读取响应，包括位读取和字读取的响应数据，以ETX03和校验和结束
 3. ACK确认写入响应，包括位写入和字写入
 4. NAK不确认写入响应，包括位写入和字写入
+
+## 快速入门
+
+### 安装
+
+```
+dotnet add package NewLife.Melsec
+```
+
+### FxLinks 串口通信（FX 系列）
+
+```csharp
+using NewLife.Melsec.Protocols;
+
+// 直接使用协议层
+using var fx = new FxLinks
+{
+    PortName = "COM3",
+    Baudrate = 9600,    // FxLinks 默认参数
+    DataBits = 7,
+    Parity   = System.IO.Ports.Parity.Even,
+};
+fx.Open();
+
+Byte host = 1;  // 站号
+
+// 读取数据寄存器 D100 起 4 个字
+UInt16[] words = fx.ReadWord(host, "D100", 4);
+Console.WriteLine($"D100={words[0]}, D101={words[1]}");
+
+// 读取辅助继电器 M0 起 8 个位
+Byte[] bits = fx.ReadBit(host, "M0", 8);
+Console.WriteLine($"M0={bits[0]}, M1={bits[1]}");
+
+// 写入位（Y0 = ON）
+fx.WriteBit(host, "Y0", new Byte[] { 1 });
+
+// 写入字（D210 = 1234）
+fx.WriteWord(host, "D210", new UInt16[] { 1234 });
+```
+
+### FxLinks 驱动模式（IoTEdge 集成）
+
+```csharp
+using NewLife.Melsec.Drivers;
+using NewLife.IoT.Drivers;
+
+var driver    = new FxLinksDriver();
+var parameter = new FxLinksParameter
+{
+    PortName   = "COM3",
+    Baudrate   = 9600,
+    Host       = 1,
+    BatchSize  = 64,   // 每批最多 64 个点位
+    BatchStep  = 2,    // 地址差 ≤ 2 时合并为一批
+    BatchDelay = 10,   // 相邻批次间隔 10ms
+};
+
+INode node = driver.Open(device, parameter);
+
+// 批量读取（自动合并相邻地址，减少通信次数）
+IDictionary<IPoint, Object> values = driver.Read(node, points);
+
+driver.Close(node);
+```
+
+### 地址格式参考
+
+| 软元件 | 格式 | 示例 | 说明 |
+|--------|------|------|------|
+| 数据寄存器 | D{十进制} | D100, D210 | 字软元件 |
+| 辅助继电器 | M{十进制} | M0, M103 | 位软元件 |
+| 输入继电器 | X{八进制} | X0, X17 | 位软元件，八进制编号 |
+| 输出继电器 | Y{八进制} | Y0, Y17 | 位软元件，八进制编号 |
+| 定时器 | T{十进制} | T0, T10 | 字/位软元件 |
+| 计数器 | C{十进制} | C0, C200 | 字/位软元件 |
 
 ## 新生命项目矩阵
 各项目默认支持net9.0/netstandard2.1/netstandard2.0/net4.62/net4.5，旧版（2024.0801）支持net4.0/net2.0  
