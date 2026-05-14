@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -306,6 +306,74 @@ public class MCIntegrationTests : IDisposable
         Assert.Equal((Int32)0x1234, result);
 
         driver.Close(node);
+    }
+
+    [Fact]
+    [DisplayName("MCDriver 先读字D段再读位M段 两次请求均成功")]
+    public void MCDriver_Read_MixedWordAndBit_EndToEnd()
+    {
+        // 服务端按请求次序返回不同响应：第1次返回D段字数据，第2次返回M段位数据
+        var callCount = 0;
+        SetHandler(request =>
+        {
+            callCount++;
+            // 判断子命令区分字/位请求 (offset 13 = SubCmd low byte)
+            var subCmd = request[13] | (request[14] << 8);
+            if (subCmd == MCMessage.SUBCMD_WORD)
+                return MCResponse.BuildWordResponse([0xAAAA, 0xBBBB]).ToBytes();
+            else
+                return MCResponse.BuildBitResponse([true, false, true]).ToBytes();
+        });
+
+        var driver = new MCDriver();
+        var p = new MCParameter { Address = $"127.0.0.1:{_port}", Timeout = 3000 };
+        var node = driver.Open(null, p);
+
+        var points = new IPoint[]
+        {
+            new PointModel { Name = "D0",  Address = "D0"  },
+            new PointModel { Name = "D1",  Address = "D1"  },
+            new PointModel { Name = "M0",  Address = "M0"  },
+            new PointModel { Name = "M1",  Address = "M1"  },
+            new PointModel { Name = "M2",  Address = "M2"  },
+        };
+
+        var rs = driver.Read(node, points);
+
+        Assert.Equal(2, callCount);
+        Assert.Equal((UInt16)0xAAAA, rs["D0"]);
+        Assert.Equal((UInt16)0xBBBB, rs["D1"]);
+        Assert.Equal(true,  rs["M0"]);
+        Assert.Equal(false, rs["M1"]);
+        Assert.Equal(true,  rs["M2"]);
+
+        driver.Close(node);
+    }
+
+    [Fact]
+    [DisplayName("WriteWords 服务端返回错误码时抛出 MCException")]
+    public void MCDriver_WriteWords_ErrorResponse_ThrowsMCException()
+    {
+        SetHandler(_ => MCResponse.BuildErrorResponse(0xC059).ToBytes());
+
+        using var protocol = new MCProtocol { Address = $"127.0.0.1:{_port}", Timeout = 3000 };
+        protocol.Open();
+
+        var ex = Assert.Throws<MCException>(() => protocol.WriteWords(DeviceCode.D, 0, [0x1234]));
+        Assert.Equal(0xC059, ex.EndCode);
+    }
+
+    [Fact]
+    [DisplayName("WriteBits 服务端返回错误码时抛出 MCException")]
+    public void MCDriver_WriteBits_ErrorResponse_ThrowsMCException()
+    {
+        SetHandler(_ => MCResponse.BuildErrorResponse(0xC058).ToBytes());
+
+        using var protocol = new MCProtocol { Address = $"127.0.0.1:{_port}", Timeout = 3000 };
+        protocol.Open();
+
+        var ex = Assert.Throws<MCException>(() => protocol.WriteBits(DeviceCode.M, 0, [true]));
+        Assert.Equal(0xC058, ex.EndCode);
     }
 
     #endregion

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -357,6 +357,58 @@ public class MCDriverTests
         Assert.Equal(true, dic["m0"]);
         Assert.Equal(false, dic["m1"]);
         Assert.Equal(true, dic["m2"]);
+    }
+
+    [Fact]
+    [DisplayName("Write Boolean true 位软元件 M0 调用 WriteBits 并返回原值")]
+    public void Write_BitDevice_Boolean_True_CallsWriteBits()
+    {
+        var driver = new MCDriver();
+        var p = new MCParameter { Address = "127.0.0.1:6000" };
+        var node = driver.Open(null, p);
+
+        var mock = new Mock<MCProtocol> { CallBase = false };
+        mock.Setup(e => e.WriteBits(DeviceCode.M, 0, It.IsAny<Boolean[]>()));
+        driver.Link = mock.Object;
+
+        var pt = new PointModel { Name = "M0Bit", Address = "M0" };
+        var result = driver.Write(node, pt, true);
+
+        Assert.Equal(true, result);
+        mock.Verify(e => e.WriteBits(DeviceCode.M, 0, It.Is<Boolean[]>(b => b.Length == 1 && b[0] == true)), Times.Once);
+    }
+
+    [Fact]
+    [DisplayName("Read 某分段抛出异常时其他分段数据仍正常返回")]
+    public void Read_SegmentThrows_OtherSegmentsStillReturn()
+    {
+        var driver = new MCDriver();
+        var p = new MCParameter { Address = "127.0.0.1:6000" };
+        var node = driver.Open(null, p);
+
+        var mock = new Mock<MCProtocol> { CallBase = false };
+        // D段抛异常
+        mock.Setup(e => e.ReadWords(DeviceCode.D, It.IsAny<Int32>(), It.IsAny<Int32>()))
+            .Throws(new InvalidOperationException("D段模拟失败"));
+        // M段正常
+        mock.Setup(e => e.ReadBits(DeviceCode.M, 0, It.IsAny<Int32>()))
+            .Returns([true, false]);
+        driver.Link = mock.Object;
+
+        var points = new List<IPoint>
+        {
+            new PointModel { Name = "d100", Address = "D100" },
+            new PointModel { Name = "m0",   Address = "M0"   },
+            new PointModel { Name = "m1",   Address = "M1"   },
+        };
+
+        // 不应抛出异常
+        var rs = driver.Read(node, [.. points]);
+
+        // D100 因异常没有值，M0/M1 应正常读取
+        Assert.False(rs.ContainsKey("d100"));
+        Assert.Equal(true,  rs["m0"]);
+        Assert.Equal(false, rs["m1"]);
     }
 
     #endregion

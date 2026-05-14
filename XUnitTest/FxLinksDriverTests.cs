@@ -372,4 +372,60 @@ public class FxLinksDriverTests
             Assert.True(rs.ContainsKey(name));
         }
     }
+
+    [Fact]
+    public void WriteBitDevice_MAddress_CallsWriteBit()
+    {
+        var mockFxLinks = new Mock<FxLinks> { CallBase = true };
+        mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
+            .Returns(new FxLinksResponse { Code = ControlCodes.ACK });
+
+        var driver = new FxLinksDriver();
+        driver.Link = mockFxLinks.Object;
+
+        var node = driver.Open(null, new FxLinksParameter { Host = 1 });
+
+        var pt = new PointModel { Name = "M5", Address = "M5", Type = "bool" };
+        var result = driver.Write(node, pt, true);
+
+        // WriteBit 成功返回 1（点数）
+        Assert.Equal(1, (Int32)result);
+        mockFxLinks.Verify(e => e.SendCommand(It.Is<FxLinksMessage>(m => m.Command == "BW")), Times.Once);
+    }
+
+    [Fact]
+    public void WriteBitDevice_YAddress_CallsWriteBit()
+    {
+        var mockFxLinks = new Mock<FxLinks> { CallBase = true };
+        mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
+            .Returns(new FxLinksResponse { Code = ControlCodes.ACK });
+
+        var driver = new FxLinksDriver();
+        driver.Link = mockFxLinks.Object;
+
+        var node = driver.Open(null, new FxLinksParameter { Host = 1 });
+
+        var pt = new PointModel { Name = "Y0", Address = "Y0", Type = "bool" };
+        driver.Write(node, pt, false);
+
+        mockFxLinks.Verify(e => e.SendCommand(It.Is<FxLinksMessage>(m => m.Command == "BW")), Times.Once);
+    }
+
+    [Fact]
+    public void WriteWordDevice_DAddress_CallsWriteWord()
+    {
+        var mockFxLinks = new Mock<FxLinks> { CallBase = true };
+        mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
+            .Returns(new FxLinksResponse { Code = ControlCodes.ACK });
+
+        var driver = new FxLinksDriver();
+        driver.Link = mockFxLinks.Object;
+
+        var node = driver.Open(null, new FxLinksParameter { Host = 1 });
+
+        var pt = new PointModel { Name = "D10", Address = "D10", Type = "short" };
+        driver.Write(node, pt, (Int32)0x5A5A);
+
+        mockFxLinks.Verify(e => e.SendCommand(It.Is<FxLinksMessage>(m => m.Command == "WW")), Times.Once);
+    }
 }
