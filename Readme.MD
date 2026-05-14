@@ -11,6 +11,22 @@
 源码： https://github.com/NewLifeX/NewLife.Melsec  
 Nuget：NewLife.Melsec  
 
+## 项目简介
+
+NewLife.Melsec 是基于 **NewLife.IoT** 标准接口规范的三菱 PLC 纯托管通信库，覆盖工业现场最常用的两大协议场景：RS-485 串口（FxLinks 计算机链路协议）和 TCP 以太网（MC 协议）。整个库采用 MIT 开源协议，不依赖任何商业授权组件，支持 Windows/Linux/macOS，可在 Raspberry Pi 等 ARM 边缘设备上运行。
+
+通过统一的 `IDriver` 接口，可一行代码接入 **ZeroIoT/IoTEdge** 网关平台，也可直接在控制台或服务程序中调用底层协议栈。
+
+## 主要特点
+
+- **协议完整**：完整实现 FxLinks 串口协议（BR/WR/BW/WW 四指令），MC 以太网协议（3E/1E 帧）规划开发中
+- **纯托管实现**：不依赖 HslCommunication 等商业库，仅基于 .NET 标准类库和 NewLife 生态
+- **IoT 生态集成**：符合 NewLife.IoT v2.6+ 的 `IDriver`/`IDriverParameter`/`INode` 规范，即插即用
+- **批量读取优化**：`BuildSegments` 算法自动合并相邻地址，减少通信次数，大幅提升采集效率
+- **多站号支持**：同一串口可连接多台 PLC，驱动层用引用计数管理共享连接生命周期
+- **APM 链路追踪**：内置 `ITracer` 埋点，与星尘分布式平台无缝集成，方便排查通信问题
+- **跨平台多目标**：`netstandard2.1 / netstandard2.0 / net461`，支持从 .NET Framework 4.6 到 .NET 9
+
 ## 协议支持
 
 | 协议 | 传输方式 | 适用 PLC 型号 | 完成状态 |
@@ -36,6 +52,8 @@ dotnet add package NewLife.Melsec
 ```
 
 ### FxLinks 串口通信（FX 系列）
+
+FxLinks 默认串口参数：波特率 9600、数据位 7、偶校验、1 停止位（符合三菱计算机链路规范）。
 
 ```csharp
 using NewLife.Melsec.Protocols;
@@ -102,6 +120,20 @@ driver.Close(node);
 | 输出继电器 | Y{八进制} | Y0, Y17 | 位软元件，八进制编号 |
 | 定时器 | T{十进制} | T0, T10 | 字/位软元件 |
 | 计数器 | C{十进制} | C0, C200 | 字/位软元件 |
+
+## 常见问题
+
+**Q：FxLinks 读取返回 null 是什么原因？**  
+A：通常是串口参数不匹配（波特率/校验位）或通信超时。请确认 PLC 端已设置计算机链路功能，并与驱动参数完全一致。
+
+**Q：BatchSize / BatchStep / BatchDelay 怎么调整？**  
+A：`BatchStep=1` 表示地址差 ≤ 1 时自动合并；`BatchSize=0` 不限批次大小；`BatchDelay=10` 相邻批次间隔 10ms，有助于缓解 PLC 高频请求压力。
+
+**Q：MC 以太网协议何时支持？**  
+A：MC 3E 帧（`MCDriver` / `MCProtocol`）正在规划实现中，会完全符合 IoT 接口规范，届时地址写法与 FxLinks 保持一致。
+
+**Q：如何接入 IoTEdge 网关？**  
+A：注册驱动名称为 `"MelsecFxLinks"`（`[Driver("MelsecFxLinks")]` 特性已标注），在 IoTEdge 网关平台选择该驱动并填写 `FxLinksParameter` XML 配置即可。
 
 ## 新生命项目矩阵
 各项目默认支持net9.0/netstandard2.1/netstandard2.0/net4.62/net4.5，旧版（2024.0801）支持net4.0/net2.0  
