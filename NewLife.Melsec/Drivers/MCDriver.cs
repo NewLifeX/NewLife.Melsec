@@ -1,14 +1,12 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using NewLife.IoT;
 using NewLife.IoT.Drivers;
-using NewLife.Reflection;
 using NewLife.IoT.ThingModels;
 using NewLife.IoT.ThingSpecification;
-using NewLife.Log;
 using NewLife.Melsec.Protocols;
+using NewLife.Reflection;
 using NewLife.Serialization;
-using NewLife.Xml;
 
 namespace NewLife.Melsec.Drivers;
 
@@ -33,23 +31,18 @@ public class MCDriver : DriverBase
     #region IDriver 接口
 
     /// <summary>创建驱动参数对象</summary>
-    /// <param name="parameter">参数 JSON/XML 字符串，空时返回默认值</param>
-    public override IDriverParameter CreateParameter(String parameter)
+    protected override IDriverParameter OnCreateParameter() => new MCParameter
     {
-        if (parameter.IsNullOrEmpty()) return new MCParameter
-        {
-            Address = "192.168.1.10:6000",
-            Timeout = 5000,
-        };
-
-        return parameter.ToXmlEntity<MCParameter>();
-    }
+        Address = "192.168.1.10:6000",
+        Timeout = 5000,
+    };
 
     /// <summary>打开通道。一个物理 PLC 可以挂载多个逻辑设备（节点），共享同一 TCP 连接</summary>
     /// <param name="device">逻辑设备</param>
     /// <param name="parameter">参数</param>
+    /// <param name="cancellationToken">取消令牌</param>
     /// <returns>节点对象</returns>
-    public override INode Open(IDevice device, IDriverParameter parameter)
+    public override Task<INode> OpenAsync(IDevice device, IDriverParameter? parameter, CancellationToken cancellationToken = default)
     {
         using var span = Tracer?.NewSpan("mc:Open", parameter.ToJson());
 
@@ -91,28 +84,31 @@ public class MCDriver : DriverBase
 
         Interlocked.Increment(ref _nodes);
 
-        return node;
+        return TaskEx.FromResult(node as INode);
     }
 
     /// <summary>关闭通道</summary>
     /// <param name="node">节点对象</param>
-    public override void Close(INode node)
+    /// <param name="cancellationToken">取消令牌</param>
+    public override Task CloseAsync(INode node, CancellationToken cancellationToken = default)
     {
         if (Interlocked.Decrement(ref _nodes) <= 0)
         {
             Link.TryDispose();
             Link = null;
         }
+        return TaskEx.CompletedTask;
     }
 
     /// <summary>读取数据</summary>
     /// <param name="node">节点对象</param>
     /// <param name="points">点位集合。地址格式示例：D100、M200、X1F、Y2A、B100</param>
-    /// <returns>点位名称 → 读取值的字典</returns>
-    public override IDictionary<String, Object> Read(INode node, IPoint[] points)
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>读取结果</returns>
+    public override Task<ReadResult> ReadAsync(INode node, IPoint[] points, CancellationToken cancellationToken = default)
     {
-        var dic = new Dictionary<String, Object>();
-        if (points == null || points.Length == 0) return dic;
+        if (points == null || points.Length == 0)
+            return TaskEx.FromResult(new ReadResult { IsSuccess = true, Points = [], Values = [] });
 
         var n = node as MelsecNode;
         var p = node.Parameter as MCParameter;
@@ -140,38 +136,64 @@ public class MCDriver : DriverBase
             }
         }
 
-        return Dispatch(points, list);
+        var dic = Dispatch(points, list);
+
+        var resultPoints = new IPoint[dic.Count];
+        var resultValues = new Object?[dic.Count];
+        var idx = 0;
+        foreach (var kv in dic)
+        {
+            var pt = points.FirstOrDefault(e => e.Name == kv.Key);
+            resultPoints[idx] = pt;
+            resultValues[idx] = kv.Value;
+            idx++;
+        }
+
+        return TaskEx.FromResult(new ReadResult
+        {
+            IsSuccess = true,
+            Points = resultPoints,
+            Values = resultValues,
+        });
     }
 
     /// <summary>写入数据</summary>
     /// <param name="node">节点对象</param>
-    /// <param name="point">点位。地址格式示例：D100、M200、X1F、Y0</param>
-    /// <param name="value">要写入的值</param>
-    /// <returns>实际写入值（成功时返回原值）</returns>
-    public override Object Write(INode node, IPoint point, Object value)
+    /// <param name="requests">写入请求数组，每项含目标点位和值</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>批量写入结果</returns>
+    public override Task<WriteResult> WriteAsync(INode node, WriteRequest[] requests, CancellationToken cancellationToken = default)
     {
-        if (value == null) return null;
-        if (point.Address.IsNullOrEmpty()) return null;
-
-        var n = node as MelsecNode;
-        var (devCode, addr) = DeviceCodeHelper.ParseAddress(point.Address);
-
-        lock (Link)
+        var successCount = 0;
+        foreach (var request in requests)
         {
-            if (DeviceCodeHelper.IsBitDevice(devCode))
+            var point = request.Point;
+            var value = request.Value;
+
+            if (value == null || point == null || point.Address.IsNullOrEmpty()) continue;
+
+            var n = node as MelsecNode;
+            var (devCode, addr) = DeviceCodeHelper.ParseAddress(point.Address);
+
+            lock (Link)
             {
-                var bitVal = value.ToBoolean();
-                Link.WriteBits(devCode, addr, [bitVal]);
+                if (DeviceCodeHelper.IsBitDevice(devCode))
+                {
+                    var bitVal = value.ToBoolean();
+                    Link.WriteBits(devCode, addr, [bitVal]);
+                }
+                else
+                {
+                    var words = ConvertToWords(value, point, n.Device?.Specification);
+                    if (words == null) throw new NotSupportedException($"点位[{point.Name}]不支持数据[{value}]");
+                    Link.WriteWords(devCode, addr, words);
+                }
             }
-            else
-            {
-                var words = ConvertToWords(value, point, n.Device?.Specification);
-                if (words == null) throw new NotSupportedException($"点位[{point.Name}]不支持数据[{value}]");
-                Link.WriteWords(devCode, addr, words);
-            }
+
+            successCount++;
         }
 
-        return value;
+        return TaskEx.FromResult(WriteResult.SuccessBatch(successCount));
     }
 
     #endregion
@@ -318,7 +340,7 @@ public class MCDriver : DriverBase
 
     /// <summary>MC批量读取分段</summary>
     [DebuggerDisplay("{Code}(start={StartAddress}, count={Count})")]
-    internal class MCSegment
+    public class MCSegment
     {
         /// <summary>软元件代码</summary>
         public DeviceCode Code { get; set; }

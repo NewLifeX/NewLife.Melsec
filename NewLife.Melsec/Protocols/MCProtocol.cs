@@ -1,4 +1,4 @@
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using NewLife.Log;
 using NewLife.Melsec.Protocols;
 
@@ -83,7 +83,7 @@ public class MCProtocol : DisposeBase
     {
         _stream?.Dispose();
         _stream = null;
-        _client?.Dispose();
+        _client?.TryDispose();
         _client = null;
     }
 

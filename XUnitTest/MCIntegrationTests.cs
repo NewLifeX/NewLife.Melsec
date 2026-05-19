@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
 using NewLife.Melsec.Drivers;
 using NewLife.Melsec.Protocols;
@@ -282,10 +283,10 @@ public class MCIntegrationTests : IDisposable
 
         var rs = driver.Read(node, points);
 
-        Assert.Equal(3, rs.Count);
-        Assert.Equal((UInt16)0x0100, rs["D100"]);
-        Assert.Equal((UInt16)0x0200, rs["D101"]);
-        Assert.Equal((UInt16)0x0300, rs["D102"]);
+        Assert.Equal(3, rs.Points.Length);
+        Assert.Equal((UInt16)0x0100, rs.GetValue("D100"));
+        Assert.Equal((UInt16)0x0200, rs.GetValue("D101"));
+        Assert.Equal((UInt16)0x0300, rs.GetValue("D102"));
 
         driver.Close(node);
     }
@@ -303,7 +304,8 @@ public class MCIntegrationTests : IDisposable
         var pt = new PointModel { Name = "D100", Address = "D100", Type = "short" };
         var result = driver.Write(node, pt, (Int32)0x1234);
 
-        Assert.Equal((Int32)0x1234, result);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.AffectedCount);
 
         driver.Close(node);
     }
@@ -341,11 +343,11 @@ public class MCIntegrationTests : IDisposable
         var rs = driver.Read(node, points);
 
         Assert.Equal(2, callCount);
-        Assert.Equal((UInt16)0xAAAA, rs["D0"]);
-        Assert.Equal((UInt16)0xBBBB, rs["D1"]);
-        Assert.Equal(true,  rs["M0"]);
-        Assert.Equal(false, rs["M1"]);
-        Assert.Equal(true,  rs["M2"]);
+        Assert.Equal((UInt16)0xAAAA, rs.GetValue("D0"));
+        Assert.Equal((UInt16)0xBBBB, rs.GetValue("D1"));
+        Assert.Equal(true,  rs.GetValue("M0"));
+        Assert.Equal(false, rs.GetValue("M1"));
+        Assert.Equal(true,  rs.GetValue("M2"));
 
         driver.Close(node);
     }

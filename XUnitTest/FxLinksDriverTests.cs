@@ -59,7 +59,7 @@ public class FxLinksDriverTests
 
         var node = driver.Open(null, dic);
 
-        // 模拟FxLinks
+        // Mock FxLinks
         var mb = new Mock<FxLinks>();
         mb.Setup(e => e.ReadWord(1, "D0", It.IsAny<Byte>()))
             .Returns(new UInt16[] { 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd, 0x1234, 0x5678, 0xabcd, 0x90cd });
@@ -68,26 +68,15 @@ public class FxLinksDriverTests
         var points = new List<IPoint>();
         for (var i = 0; i < 10; i++)
         {
-            var pt = new PointModel
-            {
-                Name = "p" + i,
-                Address = "D" + i,
-                Length = 2
-            };
-
-            points.Add(pt);
+            points.Add(new PointModel { Name = "p" + i, Address = "D" + i, Length = 2 });
         }
 
-        // 读取
         var rs = driver.Read(node, points.ToArray());
         Assert.NotNull(rs);
-        Assert.Equal(10, rs.Count);
+        Assert.Equal(10, rs.Points.Length);
 
         for (var i = 0; i < 10; i++)
-        {
-            var name = "p" + i;
-            Assert.True(rs.ContainsKey(name));
-        }
+            Assert.NotNull(rs.GetValue("p" + i));
     }
 
     [Fact]
@@ -100,7 +89,7 @@ public class FxLinksDriverTests
 
         var node = driver.Open(null, dic);
 
-        // 模拟FxLinks
+        // Mock FxLinks
         var mb = new Mock<FxLinks> { CallBase = true };
         mb.Setup(e => e.SendCommand("BR", 5, "Y0", "08"))
             .Returns(new FxLinksResponse { Code = ControlCodes.ACK, Payload = "11111010" });
@@ -108,35 +97,23 @@ public class FxLinksDriverTests
 
         var points = new List<IPoint>();
         for (var i = 0; i < 8; i++)
-        {
-            var pt = new PointModel
-            {
-                Name = "p" + i,
-                Address = "Y" + i,
-            };
+            points.Add(new PointModel { Name = "p" + i, Address = "Y" + i });
 
-            points.Add(pt);
-        }
-
-        // 读取
         var rs = driver.Read(node, points.ToArray());
         Assert.NotNull(rs);
-        Assert.Equal(8, rs.Count);
+        Assert.Equal(8, rs.Points.Length);
 
         for (var i = 0; i < 8; i++)
-        {
-            var name = "p" + i;
-            Assert.True(rs.ContainsKey(name));
-        }
+            Assert.NotNull(rs.GetValue("p" + i));
 
-        Assert.Equal((Byte)1, rs["p0"]);
-        Assert.Equal((Byte)1, rs["p1"]);
-        Assert.Equal((Byte)1, rs["p2"]);
-        Assert.Equal((Byte)1, rs["p3"]);
-        Assert.Equal((Byte)1, rs["p4"]);
-        Assert.Equal((Byte)0, rs["p5"]);
-        Assert.Equal((Byte)1, rs["p6"]);
-        Assert.Equal((Byte)0, rs["p7"]);
+        Assert.Equal((Byte)1, rs.GetValue("p0"));
+        Assert.Equal((Byte)1, rs.GetValue("p1"));
+        Assert.Equal((Byte)1, rs.GetValue("p2"));
+        Assert.Equal((Byte)1, rs.GetValue("p3"));
+        Assert.Equal((Byte)1, rs.GetValue("p4"));
+        Assert.Equal((Byte)0, rs.GetValue("p5"));
+        Assert.Equal((Byte)1, rs.GetValue("p6"));
+        Assert.Equal((Byte)0, rs.GetValue("p7"));
     }
 
     [Fact]
@@ -148,7 +125,6 @@ public class FxLinksDriverTests
 
         var node = driver.Open(null, p);
 
-        // 模拟FxLinks
         var mockFxLinks = new Mock<FxLinks> { CallBase = true };
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
             .Returns<FxLinksMessage>(e => new FxLinksResponse
@@ -160,27 +136,16 @@ public class FxLinksDriverTests
 
         var points = new List<IPoint>
         {
-            new PointModel
-            {
-                Name = "调节池运行时间",
-                Address = "D100",
-                Length = 2
-            },
-            new PointModel
-            {
-                Name = "调节池停止时间",
-                Address = "D102",
-                Length = 2
-            }
+            new PointModel { Name = "调节池运行时间", Address = "D100", Length = 2 },
+            new PointModel { Name = "调节池停止时间", Address = "D102", Length = 2 }
         };
 
-        // 读取
         var rs = driver.Read(node, points.ToArray());
         Assert.NotNull(rs);
-        Assert.Equal(2, rs.Count);
+        Assert.Equal(2, rs.Points.Length);
 
-        Assert.Equal(0x1234, (UInt16)rs["调节池运行时间"]);
-        Assert.Equal(0xabcd, (UInt16)rs["调节池停止时间"]);
+        Assert.Equal(0x1234, (UInt16)rs.GetValue("调节池运行时间"));
+        Assert.Equal(0xabcd, (UInt16)rs.GetValue("调节池停止时间"));
     }
 
     [Fact]
@@ -188,26 +153,18 @@ public class FxLinksDriverTests
     {
         var mockFxLinks = new Mock<FxLinks> { CallBase = true };
         mockFxLinks.Setup(e => e.SendCommand(It.IsAny<FxLinksMessage>()))
-            .Returns<FxLinksMessage>(e => new FxLinksResponse
-            {
-                Code = ControlCodes.ACK,
-            });
+            .Returns<FxLinksMessage>(e => new FxLinksResponse { Code = ControlCodes.ACK });
 
         var driver = new FxLinksDriver();
         driver.Link = mockFxLinks.Object;
 
         var node = driver.Open(null, new FxLinksParameter());
 
-        var pt = new PointModel
-        {
-            Name = "调节池运行时间",
-            Address = "D100",
-            Type = "short",
-            Length = 2
-        };
+        var pt = new PointModel { Name = "调节池运行时间", Address = "D100", Type = "short", Length = 2 };
 
-        var rs = (Int32)driver.Write(node, pt, "15");
-        Assert.Equal(1, rs);
+        var rs = driver.Write(node, pt, "15");
+        Assert.True(rs.IsSuccess);
+        Assert.Equal(1, rs.AffectedCount);
     }
 
     [Fact]
@@ -215,27 +172,15 @@ public class FxLinksDriverTests
     {
         var driver = new FxLinksDriver();
 
-        // 10个点位
         var points = new List<IPoint>();
         for (var i = 0; i < 10; i++)
-        {
-            var pt = new PointModel
-            {
-                Name = "p" + i,
-                Address = "X" + i,
-                Length = 2
-            };
+            points.Add(new PointModel { Name = "p" + i, Address = "X" + i, Length = 2 });
 
-            points.Add(pt);
-        }
-
-        // 凑批成为一个
         var segs = driver.BuildSegments(points, new FxLinksParameter());
         Assert.Equal(1, segs.Count);
         Assert.Equal(0, segs[0].Address);
         Assert.Equal(10, segs[0].Count);
 
-        // 每4个一批，凑成3批
         segs = driver.BuildSegments(points, new FxLinksParameter { BatchSize = 4 });
         Assert.Equal(3, segs.Count);
         Assert.Equal(4, segs[1].Address);
@@ -247,30 +192,26 @@ public class FxLinksDriverTests
     {
         var driver = new FxLinksDriver();
 
-        // 10个点位
         var points = new List<IPoint>
         {
-            new PointModel { Name = "p0", Address = "Y0", },
-            new PointModel { Name = "p2", Address = "Y2", },
-            new PointModel { Name = "p4", Address = "Y4", },
-            new PointModel { Name = "p8", Address = "Y8", },
-            new PointModel { Name = "p16", Address = "Y10", },
-            new PointModel { Name = "p20", Address = "Y14", }
+            new PointModel { Name = "p0",  Address = "Y0"  },
+            new PointModel { Name = "p2",  Address = "Y2"  },
+            new PointModel { Name = "p4",  Address = "Y4"  },
+            new PointModel { Name = "p8",  Address = "Y8"  },
+            new PointModel { Name = "p16", Address = "Y10" },
+            new PointModel { Name = "p20", Address = "Y14" }
         };
 
-        // 无法合并
         var segs = driver.BuildSegments(points, new FxLinksParameter());
         Assert.Equal(6, segs.Count);
         Assert.Equal(0, segs[0].Address);
         Assert.Equal(1, segs[0].Count);
 
-        // 凑批成为一个
         segs = driver.BuildSegments(points, new FxLinksParameter { BatchStep = 4 });
         Assert.Equal(1, segs.Count);
         Assert.Equal(0, segs[0].Address);
         Assert.Equal(15, segs[0].Count);
 
-        // 每4个一批，凑成3批
         segs = driver.BuildSegments(points, new FxLinksParameter { BatchStep = 4, BatchSize = 4 });
         Assert.Equal(2, segs.Count);
         Assert.Equal(10, segs[1].Address);
@@ -288,10 +229,7 @@ public class FxLinksDriverTests
         var node = driver.Open(null, dic);
         p = node.Parameter as FxLinksParameter;
 
-        // 模拟
         var mb = new Mock<FxLinks>();
-        //mb.Setup(e => e.Read("BR", 1, "M0", 8))
-        //    .Returns("12-34-56-78-90-12-34-56-78-90-12-34-56-78-90-12".ToHex());
         mb.Setup(e => e.ReadBit(1, "M0", 8))
             .Returns("12-34-56-78-90-12-34-56-78-90-12-34-56-78-90-12".ToHex());
         mb.Setup(e => e.ReadBit(1, "M8", 2))
@@ -300,29 +238,16 @@ public class FxLinksDriverTests
 
         var points = new List<IPoint>();
         for (var i = 0; i < 10; i++)
-        {
-            var pt = new PointModel
-            {
-                Name = "p" + i,
-                Address = "M" + i,
-            };
+            points.Add(new PointModel { Name = "p" + i, Address = "M" + i });
 
-            points.Add(pt);
-        }
-
-        // 打断
         p.BatchSize = 8;
 
-        // 读取
         var rs = driver.Read(node, points.ToArray());
         Assert.NotNull(rs);
-        Assert.Equal(10, rs.Count);
+        Assert.Equal(10, rs.Points.Length);
 
         for (var i = 0; i < 10; i++)
-        {
-            var name = "p" + i;
-            Assert.True(rs.ContainsKey(name));
-        }
+            Assert.NotNull(rs.GetValue("p" + i));
     }
 
     [Fact]
@@ -347,30 +272,16 @@ public class FxLinksDriverTests
 
         var points = new List<IPoint>();
         for (var i = 0; i < 10; i++)
-        {
-            var pt = new PointModel
-            {
-                Name = "p" + i,
-                Address = "D" + i,
-                Length = 2
-            };
+            points.Add(new PointModel { Name = "p" + i, Address = "D" + i, Length = 2 });
 
-            points.Add(pt);
-        }
-
-        // 打断
         p.BatchSize = 4;
 
-        // 读取
         var rs = driver.Read(node, points.ToArray());
         Assert.NotNull(rs);
-        Assert.Equal(10, rs.Count);
+        Assert.Equal(10, rs.Points.Length);
 
         for (var i = 0; i < 10; i++)
-        {
-            var name = "p" + i;
-            Assert.True(rs.ContainsKey(name));
-        }
+            Assert.NotNull(rs.GetValue("p" + i));
     }
 
     [Fact]
@@ -388,8 +299,8 @@ public class FxLinksDriverTests
         var pt = new PointModel { Name = "M5", Address = "M5", Type = "bool" };
         var result = driver.Write(node, pt, true);
 
-        // WriteBit 成功返回 1（点数）
-        Assert.Equal(1, (Int32)result);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.AffectedCount);
         mockFxLinks.Verify(e => e.SendCommand(It.Is<FxLinksMessage>(m => m.Command == "BW")), Times.Once);
     }
 
@@ -406,8 +317,9 @@ public class FxLinksDriverTests
         var node = driver.Open(null, new FxLinksParameter { Host = 1 });
 
         var pt = new PointModel { Name = "Y0", Address = "Y0", Type = "bool" };
-        driver.Write(node, pt, false);
+        var result = driver.Write(node, pt, false);
 
+        Assert.True(result.IsSuccess);
         mockFxLinks.Verify(e => e.SendCommand(It.Is<FxLinksMessage>(m => m.Command == "BW")), Times.Once);
     }
 
@@ -424,8 +336,9 @@ public class FxLinksDriverTests
         var node = driver.Open(null, new FxLinksParameter { Host = 1 });
 
         var pt = new PointModel { Name = "D10", Address = "D10", Type = "short" };
-        driver.Write(node, pt, (Int32)0x5A5A);
+        var result = driver.Write(node, pt, (Int32)0x5A5A);
 
+        Assert.True(result.IsSuccess);
         mockFxLinks.Verify(e => e.SendCommand(It.Is<FxLinksMessage>(m => m.Command == "WW")), Times.Once);
     }
 }

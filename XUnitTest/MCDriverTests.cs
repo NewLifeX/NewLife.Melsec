@@ -91,8 +91,8 @@ public class MCDriverTests
     #region Read
 
     [Fact]
-    [DisplayName("Read 字软元件 D100-D104 返回正确字典")]
-    public void Read_WordRegisters_ReturnsDictionary()
+    [DisplayName("Read 字软元件 D100-D104 返回正确结果")]
+    public void Read_WordRegisters_ReturnsReadResult()
     {
         var driver = new MCDriver();
         var p = new MCParameter { Address = "127.0.0.1:6000" };
@@ -111,15 +111,15 @@ public class MCDriverTests
         var rs = driver.Read(node, [.. points]);
 
         Assert.NotNull(rs);
-        Assert.Equal(5, rs.Count);
-        Assert.Equal((UInt16)0x0001, rs["p0"]);
-        Assert.Equal((UInt16)0x0002, rs["p1"]);
-        Assert.Equal((UInt16)0x0005, rs["p4"]);
+        Assert.Equal(5, rs.Points.Length);
+        Assert.Equal((UInt16)0x0001, rs.GetValue("p0"));
+        Assert.Equal((UInt16)0x0002, rs.GetValue("p1"));
+        Assert.Equal((UInt16)0x0005, rs.GetValue("p4"));
     }
 
     [Fact]
-    [DisplayName("Read 位软元件 M200-M207 返回正确字典")]
-    public void Read_BitDevices_ReturnsDictionary()
+    [DisplayName("Read 位软元件 M200-M207 返回正确结果")]
+    public void Read_BitDevices_ReturnsReadResult()
     {
         var driver = new MCDriver();
         var p = new MCParameter { Address = "127.0.0.1:6000" };
@@ -137,15 +137,15 @@ public class MCDriverTests
 
         var rs = driver.Read(node, [.. points]);
 
-        Assert.Equal(8, rs.Count);
-        Assert.Equal(true, rs["p0"]);
-        Assert.Equal(false, rs["p1"]);
-        Assert.Equal(true, rs["p2"]);
-        Assert.Equal(true, rs["p3"]);
+        Assert.Equal(8, rs.Points.Length);
+        Assert.Equal(true,  rs.GetValue("p0"));
+        Assert.Equal(false, rs.GetValue("p1"));
+        Assert.Equal(true,  rs.GetValue("p2"));
+        Assert.Equal(true,  rs.GetValue("p3"));
     }
 
     [Fact]
-    [DisplayName("Read 空点位集合 返回空字典")]
+    [DisplayName("Read 空点位集合 返回空结果")]
     public void Read_EmptyPoints_ReturnsEmpty()
     {
         var driver = new MCDriver();
@@ -157,7 +157,7 @@ public class MCDriverTests
 
         var rs = driver.Read(node, []);
         Assert.NotNull(rs);
-        Assert.Empty(rs);
+        Assert.Empty(rs.Points);
     }
 
     #endregion
@@ -165,7 +165,7 @@ public class MCDriverTests
     #region Write
 
     [Fact]
-    [DisplayName("Write 字软元件 D100 调用 WriteWords 并返回原值")]
+    [DisplayName("Write 字软元件 D100 调用 WriteWords 并返回成功")]
     public void Write_WordRegister_CallsWriteWords()
     {
         var driver = new MCDriver();
@@ -179,12 +179,13 @@ public class MCDriverTests
         var pt = new PointModel { Name = "D100Test", Address = "D100", Type = "short" };
         var result = driver.Write(node, pt, (Int32)0x1234);
 
-        Assert.Equal((Int32)0x1234, result);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.AffectedCount);
         mock.Verify(e => e.WriteWords(DeviceCode.D, 100, It.IsAny<UInt16[]>()), Times.Once);
     }
 
     [Fact]
-    [DisplayName("Write 位软元件 M0 ON 调用 WriteBits 并返回原值")]
+    [DisplayName("Write 位软元件 M0 ON 调用 WriteBits 并返回成功")]
     public void Write_BitDevice_CallsWriteBits()
     {
         var driver = new MCDriver();
@@ -198,7 +199,8 @@ public class MCDriverTests
         var pt = new PointModel { Name = "M0Test", Address = "M0" };
         var result = driver.Write(node, pt, true);
 
-        Assert.Equal(true, result);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.AffectedCount);
         mock.Verify(e => e.WriteBits(DeviceCode.M, 0, It.IsAny<Boolean[]>()), Times.Once);
     }
 
@@ -360,7 +362,7 @@ public class MCDriverTests
     }
 
     [Fact]
-    [DisplayName("Write Boolean true 位软元件 M0 调用 WriteBits 并返回原值")]
+    [DisplayName("Write Boolean true 位软元件 M0 调用 WriteBits 含正确值")]
     public void Write_BitDevice_Boolean_True_CallsWriteBits()
     {
         var driver = new MCDriver();
@@ -374,7 +376,7 @@ public class MCDriverTests
         var pt = new PointModel { Name = "M0Bit", Address = "M0" };
         var result = driver.Write(node, pt, true);
 
-        Assert.Equal(true, result);
+        Assert.True(result.IsSuccess);
         mock.Verify(e => e.WriteBits(DeviceCode.M, 0, It.Is<Boolean[]>(b => b.Length == 1 && b[0] == true)), Times.Once);
     }
 
@@ -406,9 +408,9 @@ public class MCDriverTests
         var rs = driver.Read(node, [.. points]);
 
         // D100 因异常没有值，M0/M1 应正常读取
-        Assert.False(rs.ContainsKey("d100"));
-        Assert.Equal(true,  rs["m0"]);
-        Assert.Equal(false, rs["m1"]);
+        Assert.Null(rs.GetValue("d100"));
+        Assert.Equal(true,  rs.GetValue("m0"));
+        Assert.Equal(false, rs.GetValue("m1"));
     }
 
     #endregion

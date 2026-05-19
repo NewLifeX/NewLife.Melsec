@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
-using System.Xml;
 using NewLife.IoT;
 using NewLife.IoT.Drivers;
 using NewLife.IoT.ThingModels;
@@ -9,7 +8,6 @@ using NewLife.Log;
 using NewLife.Melsec.Protocols;
 using NewLife.Reflection;
 using NewLife.Serialization;
-using NewLife.Xml;
 
 namespace NewLife.Melsec.Drivers;
 
@@ -32,17 +30,12 @@ public class FxLinksDriver : DriverBase
     /// 创建驱动参数对象，可序列化成Xml/Json作为该协议的参数模板
     /// </summary>
     /// <returns></returns>
-    public override IDriverParameter CreateParameter(String parameter)
+    protected override IDriverParameter OnCreateParameter() => new FxLinksParameter
     {
-        if (parameter.IsNullOrEmpty()) return new FxLinksParameter
-        {
-            PortName = "COM1",
-            Baudrate = 9600,
-            Host = 1,
-        };
-
-        return parameter.ToXmlEntity<FxLinksParameter>();
-    }
+        PortName = "COM1",
+        Baudrate = 9600,
+        Host = 1,
+    };
 
     /// <summary>
     /// 从点位中解析地址
@@ -66,8 +59,9 @@ public class FxLinksDriver : DriverBase
     /// </summary>
     /// <param name="device">通道</param>
     /// <param name="parameter">参数</param>
+    /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    public override INode Open(IDevice device, IDriverParameter parameter)
+    public override Task<INode> OpenAsync(IDevice device, IDriverParameter? parameter, CancellationToken cancellationToken = default)
     {
         using var span = Tracer?.NewSpan("fxlinks:parameter", parameter.ToJson());
 
@@ -119,20 +113,22 @@ public class FxLinksDriver : DriverBase
 
         Interlocked.Increment(ref _nodes);
 
-        return node;
+        return TaskEx.FromResult(node as INode);
     }
 
     /// <summary>
     /// 关闭设备驱动
     /// </summary>
     /// <param name="node"></param>
-    public override void Close(INode node)
+    /// <param name="cancellationToken">取消令牌</param>
+    public override Task CloseAsync(INode node, CancellationToken cancellationToken = default)
     {
         if (Interlocked.Decrement(ref _nodes) <= 0)
         {
             Link.TryDispose();
             Link = null;
         }
+        return TaskEx.CompletedTask;
     }
 
     /// <summary>
@@ -140,12 +136,12 @@ public class FxLinksDriver : DriverBase
     /// </summary>
     /// <param name="node">节点对象，可存储站号等信息，仅驱动自己识别</param>
     /// <param name="points">点位集合，Address属性地址示例：D100、C100、W100、H100</param>
+    /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    public override IDictionary<String, Object> Read(INode node, IPoint[] points)
+    public override Task<ReadResult> ReadAsync(INode node, IPoint[] points, CancellationToken cancellationToken = default)
     {
-        var dic = new Dictionary<String, Object>();
-
-        if (points == null || points.Length == 0) return dic;
+        if (points == null || points.Length == 0)
+            return TaskEx.FromResult(new ReadResult { IsSuccess = true, Points = [], Values = [] });
 
         var n = node as MelsecNode;
         var p = node.Parameter as FxLinksParameter;
@@ -183,7 +179,25 @@ public class FxLinksDriver : DriverBase
         }
 
         // 分割数据
-        return Dispatch(points, list);
+        var dic = Dispatch(points, list);
+
+        var resultPoints = new IPoint[dic.Count];
+        var resultValues = new Object?[dic.Count];
+        var idx = 0;
+        foreach (var kv in dic)
+        {
+            var pt = points.FirstOrDefault(e => e.Name == kv.Key);
+            resultPoints[idx] = pt;
+            resultValues[idx] = kv.Value;
+            idx++;
+        }
+
+        return TaskEx.FromResult(new ReadResult
+        {
+            IsSuccess = true,
+            Points = resultPoints,
+            Values = resultValues,
+        });
     }
 
     internal IList<Segment> BuildSegments(IList<IPoint> points, FxLinksParameter p)
@@ -303,47 +317,56 @@ public class FxLinksDriver : DriverBase
     /// 写入数据
     /// </summary>
     /// <param name="node">节点对象，可存储站号等信息，仅驱动自己识别</param>
-    /// <param name="point">点位，Address属性地址示例：D100、C100、W100、H100</param>
-    /// <param name="value">数据</param>
+    /// <param name="requests">写入请求数组，每项含目标点位和值</param>
+    /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    /// <exception cref="ArgumentException"></exception>
-    public override Object Write(INode node, IPoint point, Object value)
+    public override Task<WriteResult> WriteAsync(INode node, WriteRequest[] requests, CancellationToken cancellationToken = default)
     {
-        if (value == null) return null;
-        if (point.Address.IsNullOrEmpty()) return null;
-
-        var n = node as MelsecNode;
-
-        UInt16[] vs;
-        if (value is Byte[] buf)
+        var successCount = 0;
+        foreach (var request in requests)
         {
-            vs = new UInt16[(Int32)Math.Ceiling(buf.Length / 2d)];
-            for (var i = 0; i < vs.Length; i++)
+            var point = request.Point;
+            var value = request.Value;
+
+            if (value == null || point == null || point.Address.IsNullOrEmpty()) continue;
+
+            var n = node as MelsecNode;
+
+            UInt16[] vs;
+            if (value is Byte[] buf)
             {
-                vs[i] = buf.ToUInt16(i * 2, false);
+                vs = new UInt16[(Int32)Math.Ceiling(buf.Length / 2d)];
+                for (var i = 0; i < vs.Length; i++)
+                {
+                    vs[i] = buf.ToUInt16(i * 2, false);
+                }
             }
-        }
-        else
-        {
-            if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
-                vs = ConvertToBit(value, point, n.Device?.Specification);
             else
-                vs = ConvertToWord(value, point, n.Device?.Specification);
+            {
+                if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
+                    vs = ConvertToBit(value, point, n.Device?.Specification);
+                else
+                    vs = ConvertToWord(value, point, n.Device?.Specification);
 
-            if (vs == null) throw new NotSupportedException($"点位[{point.Name}]不支持数据[{value}]");
+                if (vs == null) throw new NotSupportedException($"点位[{point.Name}]不支持数据[{value}]");
+            }
+
+            // 加锁，避免冲突
+            lock (Link)
+            {
+                // 按照点位地址前缀决定使用哪一种写入方法，要求物模型必须配置对点位
+                if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
+                    Link.WriteBit(n.Host, point.Address, vs);
+                else if (point.Address.StartsWithIgnoreCase("D"))
+                    Link.WriteWord(n.Host, point.Address, vs);
+                else
+                    Link.Write(point.Address[..1], n.Host, point.Address, vs);
+            }
+
+            successCount++;
         }
 
-        // 加锁，避免冲突
-        lock (Link)
-        {
-            // 按照点位地址前缀决定使用哪一种写入方法，要求物模型必须配置对点位
-            if (point.Address.StartsWithIgnoreCase("X", "Y", "M"))
-                return Link.WriteBit(n.Host, point.Address, vs);
-            else if (point.Address.StartsWithIgnoreCase("D"))
-                return Link.WriteWord(n.Host, point.Address, vs);
-            else
-                return Link.Write(point.Address[..1], n.Host, point.Address, vs);
-        }
+        return TaskEx.FromResult(WriteResult.SuccessBatch(successCount));
     }
 
     /// <summary>原始数据转为线圈</summary>

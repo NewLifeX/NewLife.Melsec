@@ -52,10 +52,10 @@ try
     var node = driver.Open(null, p);
 
     var rs = driver.Read(node, points);
-    XTrace.WriteLine("rs={0}", rs.Count);
-    foreach (var item in rs)
+    XTrace.WriteLine("rs={0}", rs.Points.Length);
+    for (var i = 0; i < rs.Points.Length; i++)
     {
-        var value = item.Value;
+        var value = rs.Values[i];
         if (value is Byte[] buf)
         {
             if (buf.Length == 1)
@@ -64,7 +64,7 @@ try
                 value = buf.ToUInt16(0, false);
         }
 
-        XTrace.WriteLine("{0}={1}", item.Key, value);
+        XTrace.WriteLine("{0}={1}", rs.Points[i].Name, value);
     }
 
     //var sp = new SerialPort("COM5", 9600)
