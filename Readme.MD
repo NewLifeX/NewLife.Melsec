@@ -19,20 +19,29 @@ NewLife.Melsec 是基于 **NewLife.IoT** 标准接口规范的三菱 PLC 纯托�
 
 ## 主要特点
 
-- **协议完整**：完整实现 FxLinks 串口协议（BR/WR/BW/WW 四指令），MC 以太网协议（3E/1E 帧）规划开发中
+- **协议完整**：完整实现 FxLinks 串口协议（BR/WR/BW/WW 四指令）和 MC 以太网 3E 帧（二进制模式），覆盖三菱 FX/Q/iQ-R/L/FX5U 全系列
 - **纯托管实现**：不依赖 HslCommunication 等商业库，仅基于 .NET 标准类库和 NewLife 生态
 - **IoT 生态集成**：符合 NewLife.IoT v2.6+ 的 `IDriver`/`IDriverParameter`/`INode` 规范，即插即用
 - **批量读取优化**：`BuildSegments` 算法自动合并相邻地址，减少通信次数，大幅提升采集效率
 - **多站号支持**：同一串口可连接多台 PLC，驱动层用引用计数管理共享连接生命周期
+- **数据类型转换**：`ConvertToWords` 支持 Boolean/Int16/Int32/Float/Double → UInt16[]，写操作无需手动编码
 - **APM 链路追踪**：内置 `ITracer` 埋点，与星尘分布式平台无缝集成，方便排查通信问题
-- **跨平台多目标**：`netstandard2.1 / netstandard2.0 / net461`，支持从 .NET Framework 4.6 到 .NET 9
+- **跨平台多目标**：`net10.0/net9.0/net8.0/net7.0/net6.0/netstandard2.1/netstandard2.0/net461/net45`，支持从 .NET Framework 4.5 到 .NET 10
+
+## 文档索引
+
+| 文档 | 说明 |
+|------|------|
+| [需求文档](Doc/需求文档.md) | 愿景、模块定义、用户角色、边界约束 |
+| [功能清单](Doc/功能清单.md) | 功能点三维追踪（实现/测试/注释） |
+| [架构设计](Doc/架构设计.md) | 分层架构、帧格式、组件设计、关键流程 |
 
 ## 协议支持
 
 | 协议 | 传输方式 | 适用 PLC 型号 | 完成状态 |
 |:---:|:---:|:---|:---:|
 | FxLinks（计算机链路） | RS-485 串口 | FX 系列（FX1S/FX1N/FX2N/FX3U 等） | ✅ 已完成 |
-| MC 3E 帧（二进制） | TCP/IP 以太网 | Q/iQ-R/L 系列、FX3U-ENET、FX5U 等 | ⬜ 规划中 |
+| MC 3E 帧（二进制） | TCP/IP 以太网 | Q/iQ-R/L 系列、FX3U-ENET、FX5U 等 | ✅ 已完成 |
 | MC 1E 帧 | TCP/IP 以太网 | A 系列（旧式兼容） | ⬜ 规划中 |
 | SLMP（3C/4C 帧） | TCP/IP 以太网 | iQ-R/iQ-F 系列（最新标准） | ⬜ 远期规划 |
 
