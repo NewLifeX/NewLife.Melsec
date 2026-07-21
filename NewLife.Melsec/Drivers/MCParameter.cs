@@ -4,18 +4,22 @@ using NewLife.Melsec.Protocols;
 
 namespace NewLife.Melsec.Drivers;
 
-/// <summary>三菱MC协议驱动参数（以太网 3E 帧，支持二进制/ASCII模式）</summary>
+/// <summary>三菱MC协议驱动参数（以太网，支持 3E/1E 帧格式及二进制/ASCII模式）</summary>
 public class MCParameter : IDriverParameter, IDriverParameterKey
 {
     /// <summary>PLC地址。格式：IP:端口，如 192.168.1.10:6000</summary>
     [Description("PLC地址。格式：IP:端口，如 192.168.1.10:6000")]
     public String Address { get; set; }
 
-    /// <summary>网络号。通常 0x00 表示本机网络</summary>
+    /// <summary>帧类型。Frame3E=3E帧（默认，Q/iQ-R系列），Frame1E=1E帧（A系列）</summary>
+    [Description("帧类型。Frame3E=3E帧（默认，Q/iQ-R系列），Frame1E=1E帧（A系列）")]
+    public MCFrameType FrameType { get; set; } = MCFrameType.Frame3E;
+
+    /// <summary>网络号（仅 3E 帧）。通常 0x00 表示本机网络</summary>
     [Description("网络号。通常 0")]
     public Byte NetworkNo { get; set; } = 0x00;
 
-    /// <summary>数据格式。Binary=二进制模式（默认），Ascii=ASCII十六进制模式</summary>
+    /// <summary>数据格式（仅 3E 帧）。Binary=二进制模式（默认），Ascii=ASCII十六进制模式</summary>
     [Description("数据格式。Binary=二进制模式（默认），Ascii=ASCII十六进制模式")]
     public MCDataFormat DataFormat { get; set; } = MCDataFormat.Binary;
 

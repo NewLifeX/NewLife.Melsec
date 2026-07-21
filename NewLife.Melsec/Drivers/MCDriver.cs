@@ -68,6 +68,7 @@ public class MCDriver : DriverBase
                     var link = new MCProtocol
                     {
                         Address = p.Address,
+                        FrameType = p.FrameType,
                         NetworkNo = p.NetworkNo,
                         DataFormat = p.DataFormat,
                         Log = Log,
