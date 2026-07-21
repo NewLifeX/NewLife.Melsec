@@ -69,6 +69,7 @@ public class MCDriver : DriverBase
                     {
                         Address = p.Address,
                         NetworkNo = p.NetworkNo,
+                        DataFormat = p.DataFormat,
                         Log = Log,
                         Tracer = Tracer,
                     };

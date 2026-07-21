@@ -1,9 +1,10 @@
 using System.ComponentModel;
 using NewLife.IoT.Drivers;
+using NewLife.Melsec.Protocols;
 
 namespace NewLife.Melsec.Drivers;
 
-/// <summary>三菱MC协议驱动参数（以太网 3E 帧）</summary>
+/// <summary>三菱MC协议驱动参数（以太网 3E 帧，支持二进制/ASCII模式）</summary>
 public class MCParameter : IDriverParameter, IDriverParameterKey
 {
     /// <summary>PLC地址。格式：IP:端口，如 192.168.1.10:6000</summary>
@@ -13,6 +14,10 @@ public class MCParameter : IDriverParameter, IDriverParameterKey
     /// <summary>网络号。通常 0x00 表示本机网络</summary>
     [Description("网络号。通常 0")]
     public Byte NetworkNo { get; set; } = 0x00;
+
+    /// <summary>数据格式。Binary=二进制模式（默认），Ascii=ASCII十六进制模式</summary>
+    [Description("数据格式。Binary=二进制模式（默认），Ascii=ASCII十六进制模式")]
+    public MCDataFormat DataFormat { get; set; } = MCDataFormat.Binary;
 
     /// <summary>网络超时。发起请求后等待响应的超时时间，默认 5000ms</summary>
     [Description("网络超时。发起请求后等待响应的超时时间，默认 5000ms")]

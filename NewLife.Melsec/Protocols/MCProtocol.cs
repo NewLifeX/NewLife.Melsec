@@ -7,6 +7,7 @@ namespace NewLife.Melsec.Protocols;
 /// <summary>三菱MC协议3E帧协议栈（TCP长连接）</summary>
 /// <remarks>
 /// 负责管理与 PLC 的 TCP 连接，提供字/位软元件的批量读写。
+/// 支持二进制模式和 ASCII 十六进制模式两种数据格式。
 /// 连接断开时自动重连；所有操作均加锁保证线程安全。
 /// </remarks>
 public class MCProtocol : DisposeBase
@@ -24,6 +25,9 @@ public class MCProtocol : DisposeBase
 
     /// <summary>PC号。通常 0xFF</summary>
     public Byte PCNo { get; set; } = 0xFF;
+
+    /// <summary>数据格式。默认二进制模式，可切换为 ASCII 十六进制模式</summary>
+    public MCDataFormat DataFormat { get; set; } = MCDataFormat.Binary;
 
     /// <summary>网络超时（毫秒）。默认 5000ms</summary>
     public Int32 Timeout { get; set; } = 5000;
@@ -107,6 +111,7 @@ public class MCProtocol : DisposeBase
         var msg = MCMessage.BuildReadWord(devCode, startAddr, count);
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -125,6 +130,7 @@ public class MCProtocol : DisposeBase
         var msg = MCMessage.BuildReadBit(devCode, startAddr, count);
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -142,6 +148,7 @@ public class MCProtocol : DisposeBase
         var msg = MCMessage.BuildWriteWord(devCode, startAddr, values);
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -158,6 +165,7 @@ public class MCProtocol : DisposeBase
         var msg = MCMessage.BuildWriteBit(devCode, startAddr, ushorts);
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -186,27 +194,16 @@ public class MCProtocol : DisposeBase
             {
                 _stream.Write(buf, 0, buf.Length);
 
-                // 读取固定头：子头(2)+网络号(1)+PC号(1)+IO单元号(2)+通道号(1)+数据长度(2) = 9字节
-                var header = new Byte[MCResponse.FIXED_HEADER_LEN];
-                ReadFully(_stream, header, 0, header.Length);
+                MCResponse response;
+                if (DataFormat.IsAscii())
+                {
+                    response = ReceiveAsciiResponse(span);
+                }
+                else
+                {
+                    response = ReceiveBinaryResponse(span);
+                }
 
-                // 从头部偏移 7~8 读取数据长度
-                var dataLength = header[7] | (header[8] << 8);
-
-                // 读取可变部分：结束码(2) + 响应数据(N)
-                var data = new Byte[dataLength];
-                ReadFully(_stream, data, 0, dataLength);
-
-                // 合并解析
-                var all = new Byte[header.Length + data.Length];
-                Array.Copy(header, 0, all, 0, header.Length);
-                Array.Copy(data, 0, all, header.Length, data.Length);
-
-                if (span != null) span.Tag += Environment.NewLine + all.ToHex("-", 64);
-                Log?.Debug("{0}<= {1}", Address, all.ToHex("-", 64));
-
-                var response = new MCResponse();
-                response.Read(new MemoryStream(all), null);
                 return response;
             }
             catch (Exception ex)
@@ -217,6 +214,69 @@ public class MCProtocol : DisposeBase
                 throw;
             }
         }
+    }
+
+    /// <summary>接收二进制模式响应</summary>
+    private MCResponse ReceiveBinaryResponse(ISpan span)
+    {
+        // 读取固定头：子头(2)+网络号(1)+PC号(1)+IO单元号(2)+通道号(1)+数据长度(2) = 9字节
+        var header = new Byte[MCResponse.FIXED_HEADER_LEN];
+        ReadFully(_stream, header, 0, header.Length);
+
+        // 从头部偏移 7~8 读取数据长度（LE）
+        var dataLength = header[7] | (header[8] << 8);
+
+        // 读取可变部分：结束码(2) + 响应数据(N)
+        var data = new Byte[dataLength];
+        ReadFully(_stream, data, 0, dataLength);
+
+        // 合并解析
+        var all = new Byte[header.Length + data.Length];
+        Array.Copy(header, 0, all, 0, header.Length);
+        Array.Copy(data, 0, all, header.Length, data.Length);
+
+        if (span != null) span.Tag += Environment.NewLine + all.ToHex("-", 64);
+        Log?.Debug("{0}<= {1}", Address, all.ToHex("-", 64));
+
+        var response = new MCResponse();
+        response.Read(new MemoryStream(all), null);
+        return response;
+    }
+
+    /// <summary>接收 ASCII 模式响应</summary>
+    private MCResponse ReceiveAsciiResponse(ISpan span)
+    {
+        // ASCII 模式：每个字节用 2 个 ASCII 十六进制字符表示
+        // 固定头 9 字节 → 18 ASCII 字符
+        var headerLen = MCResponse.FIXED_HEADER_ASCII_LEN;
+        var headerBuf = new Byte[headerLen];
+        ReadFully(_stream, headerBuf, 0, headerLen);
+
+        // 将 ASCII 十六进制字符转换为二进制字节
+        var headerHex = System.Text.Encoding.ASCII.GetString(headerBuf);
+        var header = headerHex.ToHex();
+
+        // 从二进制头部偏移 7~8 读取数据长度（LE）
+        var dataLength = header[7] | (header[8] << 8);
+
+        // 读取可变部分：结束码(2) + 响应数据(N) → dataLength 字节 → dataLength * 2 ASCII 字符
+        var dataAsciiLen = dataLength * 2;
+        var dataBuf = new Byte[dataAsciiLen];
+        ReadFully(_stream, dataBuf, 0, dataAsciiLen);
+        var dataHex = System.Text.Encoding.ASCII.GetString(dataBuf);
+        var data = dataHex.ToHex();
+
+        // 合并解析
+        var all = new Byte[header.Length + data.Length];
+        Array.Copy(header, 0, all, 0, header.Length);
+        Array.Copy(data, 0, all, header.Length, data.Length);
+
+        if (span != null) span.Tag += Environment.NewLine + all.ToHex("-", 64);
+        Log?.Debug("{0}<= {1}", Address, all.ToHex("-", 64));
+
+        var response = new MCResponse { DataFormat = DataFormat };
+        response.Read(new MemoryStream(all), null);
+        return response;
     }
 
     private static void ReadFully(Stream stream, Byte[] buffer, Int32 offset, Int32 count)
