@@ -237,6 +237,121 @@ public class MCProtocol : DisposeBase
 
     #endregion
 
+    #region 类型转换读取
+
+    /// <summary>批量读取 Int32 类型数据（每值 2 字，带符号）</summary>
+    /// <param name="devCode">软元件代码</param>
+    /// <param name="startAddr">起始地址</param>
+    /// <param name="count">点数</param>
+    public virtual Int32[] ReadInt32(DeviceCode devCode, Int32 startAddr, Int32 count)
+    {
+        var words = ReadWords(devCode, startAddr, count * 2);
+        var result = new Int32[count];
+        for (var i = 0; i < count; i++)
+        {
+            result[i] = (Int32)(UInt32)(words[i * 2] | (words[i * 2 + 1] << 16));
+        }
+        return result;
+    }
+
+    /// <summary>批量读取 UInt32 类型数据（每值 2 字）</summary>
+    /// <param name="devCode">软元件代码</param>
+    /// <param name="startAddr">起始地址</param>
+    /// <param name="count">点数</param>
+    public virtual UInt32[] ReadUInt32(DeviceCode devCode, Int32 startAddr, Int32 count)
+    {
+        var words = ReadWords(devCode, startAddr, count * 2);
+        var result = new UInt32[count];
+        for (var i = 0; i < count; i++)
+        {
+            result[i] = (UInt32)(words[i * 2] | (words[i * 2 + 1] << 16));
+        }
+        return result;
+    }
+
+    /// <summary>批量读取 Single（Float）类型数据（每值 2 字，IEEE 754）</summary>
+    /// <param name="devCode">软元件代码</param>
+    /// <param name="startAddr">起始地址</param>
+    /// <param name="count">点数</param>
+    public virtual Single[] ReadSingle(DeviceCode devCode, Int32 startAddr, Int32 count)
+    {
+        var words = ReadWords(devCode, startAddr, count * 2);
+        var result = new Single[count];
+        for (var i = 0; i < count; i++)
+        {
+            var raw = (UInt32)(words[i * 2] | (words[i * 2 + 1] << 16));
+            result[i] = BitConverter.ToSingle(BitConverter.GetBytes(raw), 0);
+        }
+        return result;
+    }
+
+    /// <summary>批量读取 Double 类型数据（每值 4 字，IEEE 754）</summary>
+    /// <param name="devCode">软元件代码</param>
+    /// <param name="startAddr">起始地址</param>
+    /// <param name="count">点数</param>
+    public virtual Double[] ReadDouble(DeviceCode devCode, Int32 startAddr, Int32 count)
+    {
+        var words = ReadWords(devCode, startAddr, count * 4);
+        var result = new Double[count];
+        for (var i = 0; i < count; i++)
+        {
+            var b0 = BitConverter.GetBytes(words[i * 4]);
+            var b1 = BitConverter.GetBytes(words[i * 4 + 1]);
+            var b2 = BitConverter.GetBytes(words[i * 4 + 2]);
+            var b3 = BitConverter.GetBytes(words[i * 4 + 3]);
+            var raw = new Byte[8];
+            Array.Copy(b0, 0, raw, 0, 2);
+            Array.Copy(b1, 0, raw, 2, 2);
+            Array.Copy(b2, 0, raw, 4, 2);
+            Array.Copy(b3, 0, raw, 6, 2);
+            result[i] = BitConverter.ToDouble(raw, 0);
+        }
+        return result;
+    }
+
+    /// <summary>读取字符串类型数据</summary>
+    /// <param name="devCode">软元件代码</param>
+    /// <param name="startAddr">起始地址</param>
+    /// <param name="wordLength">字数</param>
+    /// <returns>ASCII 编码字符串（去除末尾空白和空字符）</returns>
+    public virtual String ReadString(DeviceCode devCode, Int32 startAddr, Int32 wordLength)
+    {
+        var words = ReadWords(devCode, startAddr, wordLength);
+        var bytes = new Byte[wordLength * 2];
+        for (var i = 0; i < wordLength; i++)
+        {
+            bytes[i * 2] = (Byte)(words[i] & 0xFF);
+            bytes[i * 2 + 1] = (Byte)(words[i] >> 8);
+        }
+        var str = System.Text.Encoding.ASCII.GetString(bytes).TrimEnd('\0', ' ', '\t');
+        return str;
+    }
+
+    /// <summary>1E 帧批量读取 Int32 类型数据</summary>
+    public virtual Int32[] ReadInt32_1E(MC1EDeviceCode devCode, UInt16 startAddr, Int32 count)
+    {
+        var words = ReadWords1E(devCode, startAddr, count * 2);
+        var result = new Int32[count];
+        for (var i = 0; i < count; i++)
+            result[i] = (Int32)(UInt32)(words[i * 2] | (words[i * 2 + 1] << 16));
+        return result;
+    }
+
+    /// <summary>1E 帧批量读取 Single 类型数据</summary>
+    public virtual Single[] ReadSingle_1E(MC1EDeviceCode devCode, UInt16 startAddr, Int32 count)
+    {
+        var words = ReadWords1E(devCode, startAddr, count * 2);
+        var result = new Single[count];
+        for (var i = 0; i < count; i++)
+        {
+            var raw = (UInt32)(words[i * 2] | (words[i * 2 + 1] << 16));
+            result[i] = BitConverter.ToSingle(BitConverter.GetBytes(raw), 0);
+        }
+        return result;
+    }
+
+    #endregion
+
     #region 底层通信
 
     /// <summary>发送命令并接收响应（线程安全，3E 帧）</summary>
