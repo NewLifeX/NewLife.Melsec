@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;netstandard2.0;net45;net461;net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
-    <AssemblyTitle>三菱PLC协议</AssemblyTitle>
-    <Description>三菱PLC协议</Description>
-    <Company>新生命开发团队</Company>
-    <Copyright>©2002-2026 新生命开发团队</Copyright>
+    <AssemblyTitle>三菱PLC协议 (Mitsubishi PLC Protocol)</AssemblyTitle>
+    <Description>三菱PLC协议 (Mitsubishi PLC Protocol) - FxLinks串口/MC以太网/SLMP 纯托管通信库，Pure managed communication library for Melsec PLC</Description>
+    <Company>新生命开发团队 (NewLife Team)</Company>
+    <Copyright>©2002-2026 新生命开发团队 (NewLife Team)</Copyright>
+    <NeutralResourcesLanguage>zh-CN</NeutralResourcesLanguage>
     <VersionPrefix>1.2</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
@@ -26,8 +27,9 @@
     <PackageIcon>leaf.png</PackageIcon>
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Melsec</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>物联网;IoT;边缘计算;Edge;新生命团队;NewLife;PLC;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>升级到 v2.6 的 IoT 架构；提升系统稳定性和性能</PackageReleaseNotes>
+    <PackageTags>物联网;IoT;边缘计算;Edge;新生命团队;NewLife;PLC;Mitsubishi;Melsec;FxLinks;MCProtocol;SLMP;工业自动化;Industrial;Automation;OPC;SCADA;$(AssemblyName)</PackageTags>
+    <PackageReleaseNotes>升级到 v2.6 的 IoT 架构；提升系统稳定性和性能。Upgraded to IoT v2.6 architecture; improved stability and performance.</PackageReleaseNotes>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

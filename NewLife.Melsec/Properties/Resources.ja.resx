@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" id="root">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace"/>
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1"/>
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2"/>
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string"/>
+              <xsd:attribute name="type" type="xsd:string"/>
+              <xsd:attribute name="mimetype" type="xsd:string"/>
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AssemblyDescription" xml:space="preserve">
+    <value>三菱PLC通信ライブラリ - NewLife.IoT標準インターフェース仕様に基づく、FxLinksシリアル、MCイーサネット、SLMPプロトコルをカバーする純管理型実装</value>
+    <comment>Assembly description - Japanese</comment>
+  </data>
+  <data name="ProtocolFxLinks" xml:space="preserve">
+    <value>FxLinks コンピュータリンクプロトコル (RS-485 シリアル)</value>
+    <comment>FxLinks protocol name</comment>
+  </data>
+  <data name="ProtocolMC" xml:space="preserve">
+    <value>MC プロトコル (3E/1E/4E フレーム、イーサネット)</value>
+    <comment>MC protocol name</comment>
+  </data>
+  <data name="ProtocolSLMP" xml:space="preserve">
+    <value>SLMP プロトコル (3C フレーム)</value>
+    <comment>SLMP protocol name</comment>
+  </data>
+</root>
