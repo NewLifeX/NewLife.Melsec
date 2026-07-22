@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using Moq;
 using NewLife;
 using NewLife.IoT.Drivers;
@@ -411,6 +412,74 @@ public class MCDriverTests
         Assert.Null(rs.GetValue("d100"));
         Assert.Equal(true,  rs.GetValue("m0"));
         Assert.Equal(false, rs.GetValue("m1"));
+    }
+
+    #endregion
+
+    #region 标签名访问（Tag）
+
+    [Fact]
+    [DisplayName("SetTag 存储标签映射")]
+    public void SetTag_StoresMapping()
+    {
+        var driver = new MCDriver();
+        driver.SetTag("温度", "D100");
+        driver.SetTag("压力", "D200");
+
+        Assert.Equal("D100", driver.TagMap["温度"]);
+        Assert.Equal("D200", driver.TagMap["压力"]);
+        Assert.Equal(2, driver.TagMap.Count);
+    }
+
+    [Fact]
+    [DisplayName("SetTags 批量设置标签映射")]
+    public void SetTags_BulkMapping()
+    {
+        var driver = new MCDriver();
+        driver.SetTags(new Dictionary<String, String>
+        {
+            ["温度"] = "D100",
+            ["压力"] = "D200",
+            ["速度"] = "D300",
+        });
+
+        Assert.Equal(3, driver.TagMap.Count);
+        Assert.Equal("D100", driver.TagMap["温度"]);
+        Assert.Equal("D300", driver.TagMap["速度"]);
+    }
+
+    [Fact]
+    [DisplayName("ReadTagAsync 未定义标签抛出异常")]
+    public async Task ReadTagAsync_UndefinedTag_Throws()
+    {
+        var driver = new MCDriver();
+        var p = new MCParameter { Address = "127.0.0.1:6000" };
+        var node = driver.Open(null, p);
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            driver.ReadTagAsync(node, "不存在"));
+        Assert.Contains("未在 TagMap 中定义", ex.Message);
+    }
+
+    [Fact]
+    [DisplayName("ReadTagAsync 已定义标签发起读取")]
+    public async Task ReadTagAsync_DefinedTag_CallsRead()
+    {
+        var driver = new MCDriver();
+        var p = new MCParameter { Address = "127.0.0.1:6000" };
+        var node = driver.Open(null, p);
+
+        var mock = new Mock<MCProtocol> { CallBase = false };
+        mock.Setup(e => e.ReadWords(DeviceCode.D, 100, It.IsAny<Int32>()))
+            .Returns([0x1234]);
+        driver.Link = mock.Object;
+
+        driver.SetTag("温度", "D100");
+        var rs = await driver.ReadTagAsync(node, "温度");
+
+        Assert.NotNull(rs);
+        Assert.True(rs.IsSuccess);
+        Assert.Equal((UInt16)0x1234, rs.GetValue("温度"));
     }
 
     #endregion

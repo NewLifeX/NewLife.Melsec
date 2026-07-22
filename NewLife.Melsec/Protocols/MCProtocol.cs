@@ -1,8 +1,17 @@
 ﻿using System.Net.Sockets;
 using NewLife.Log;
-using NewLife.Melsec.Protocols;
 
 namespace NewLife.Melsec.Protocols;
+
+/// <summary>MC协议传输模式</summary>
+public enum MCTransportMode
+{
+    /// <summary>TCP 传输（默认）</summary>
+    Tcp = 0,
+
+    /// <summary>UDP 传输</summary>
+    Udp = 1,
+}
 
 /// <summary>三菱MC协议栈（TCP长连接，支持 3E/1E 帧）</summary>
 /// <remarks>
@@ -24,6 +33,9 @@ public class MCProtocol : DisposeBase
     /// <summary>帧类型。3E 帧（默认）或 1E 帧</summary>
     public MCFrameType FrameType { get; set; } = MCFrameType.Frame3E;
 
+    /// <summary>传输模式。TCP（默认）或 UDP</summary>
+    public MCTransportMode TransportMode { get; set; } = MCTransportMode.Tcp;
+
     /// <summary>网络号（仅 3E 帧）。通常 0x00</summary>
     public Byte NetworkNo { get; set; } = 0x00;
 
@@ -44,6 +56,8 @@ public class MCProtocol : DisposeBase
 
     private TcpClient _client;
     private NetworkStream _stream;
+    private UdpClient _udp;
+    private System.Net.IPEndPoint _remoteEndPoint;
     private readonly Object _lock = new();
 
     #endregion
@@ -64,41 +78,67 @@ public class MCProtocol : DisposeBase
 
     #region 连接管理
 
-    /// <summary>打开TCP连接</summary>
+    /// <summary>打开连接（TCP 或 UDP）</summary>
     public void Open()
     {
-        if (_client?.Connected == true) return;
-
-        var addr = Address ?? throw new InvalidOperationException("Address 未设置");
-        var colonIdx = addr.LastIndexOf(':');
-        var host = colonIdx > 0 ? addr[..colonIdx] : addr;
-        var port = colonIdx > 0 ? Int32.Parse(addr[(colonIdx + 1)..]) : 6000;
-
-        var client = new TcpClient
+        if (TransportMode == MCTransportMode.Udp)
         {
-            ReceiveTimeout = Timeout,
-            SendTimeout = Timeout,
-        };
-        client.Connect(host, port);
-        _client = client;
-        _stream = client.GetStream();
+            if (_udp != null) return;
 
-        WriteLog("MCProtocol.Open {0}", Address);
+            var addr = Address ?? throw new InvalidOperationException("Address 未设置");
+            var colonIdx = addr.LastIndexOf(':');
+            var host = colonIdx > 0 ? addr[..colonIdx] : addr;
+            var port = colonIdx > 0 ? Int32.Parse(addr[(colonIdx + 1)..]) : 6000;
+
+            _udp = new UdpClient(host, port);
+            _udp.Client.ReceiveTimeout = Timeout;
+            _udp.Client.SendTimeout = Timeout;
+
+            WriteLog("MCProtocol.Open UDP {0}", Address);
+        }
+        else
+        {
+            if (_client?.Connected == true) return;
+
+            var addr = Address ?? throw new InvalidOperationException("Address 未设置");
+            var colonIdx = addr.LastIndexOf(':');
+            var host = colonIdx > 0 ? addr[..colonIdx] : addr;
+            var port = colonIdx > 0 ? Int32.Parse(addr[(colonIdx + 1)..]) : 6000;
+
+            var client = new TcpClient
+            {
+                ReceiveTimeout = Timeout,
+                SendTimeout = Timeout,
+            };
+            client.Connect(host, port);
+            _client = client;
+            _stream = client.GetStream();
+
+            WriteLog("MCProtocol.Open TCP {0}", Address);
+        }
     }
 
-    /// <summary>关闭TCP连接</summary>
+    /// <summary>关闭连接</summary>
     public void Close()
     {
         _stream?.Dispose();
         _stream = null;
         _client?.TryDispose();
         _client = null;
+        if (_udp != null) { ((IDisposable)_udp).Dispose(); _udp = null; }
     }
 
-    /// <summary>确保连接有效，断线则重连</summary>
+    /// <summary>确保连接有效，断线则重连（仅 TCP）</summary>
     protected void EnsureConnect()
     {
-        if (_client?.Connected != true) Open();
+        if (TransportMode == MCTransportMode.Udp)
+        {
+            Open();
+        }
+        else if (_client?.Connected != true)
+        {
+            Open();
+        }
     }
 
     #endregion
@@ -352,6 +392,118 @@ public class MCProtocol : DisposeBase
 
     #endregion
 
+    #region 随机读取（Random Read）
+
+    /// <summary>随机读取多个字软元件（命令 0403h）</summary>
+    /// <remarks>
+    /// 单次请求读取多个不连续地址的字软元件值。
+    /// 每个地址返回 1 个字（2 字节）。
+    /// </remarks>
+    /// <param name="items">随机读取项列表（软元件代码 + 起始地址）</param>
+    /// <returns>字数据数组，按请求顺序排列</returns>
+    public virtual UInt16[] ReadRandomWords(params (DeviceCode code, Int32 addr)[] items)
+    {
+        var raw = BuildRandomReadRequestData(items);
+        var msg = new MCMessage
+        {
+            Command = MCMessage.CMD_RANDOM_READ,
+            SubCommand = MCMessage.SUBCMD_WORD,
+            RawRequestData = raw,
+        };
+        msg.NetworkNo = NetworkNo;
+        msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
+
+        var response = SendCommand(msg);
+        if (response.EndCode != 0)
+            throw new MCException(response.EndCode);
+
+        return response.GetWordData();
+    }
+
+    /// <summary>随机读取多个位软元件（命令 0403h）</summary>
+    /// <param name="items">随机读取项列表（软元件代码 + 起始地址）</param>
+    /// <returns>位数据数组，按请求顺序排列</returns>
+    public virtual Boolean[] ReadRandomBits(params (DeviceCode code, Int32 addr)[] items)
+    {
+        var raw = BuildRandomReadRequestData(items);
+        var msg = new MCMessage
+        {
+            Command = MCMessage.CMD_RANDOM_READ,
+            SubCommand = MCMessage.SUBCMD_BIT,
+            RawRequestData = raw,
+        };
+        msg.NetworkNo = NetworkNo;
+        msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
+
+        var response = SendCommand(msg);
+        if (response.EndCode != 0)
+            throw new MCException(response.EndCode);
+
+        return response.GetBitData(items.Length);
+    }
+
+    /// <summary>构建随机读取请求数据</summary>
+    private static Byte[] BuildRandomReadRequestData((DeviceCode code, Int32 addr)[] items)
+    {
+        using var ms = new MemoryStream();
+        // 点数（1 字节）
+        ms.WriteByte((Byte)items.Length);
+        for (var i = 0; i < items.Length; i++)
+        {
+            ms.WriteByte((Byte)items[i].code);
+            var addr = items[i].addr;
+            ms.WriteByte((Byte)(addr & 0xFF));
+            ms.WriteByte((Byte)((addr >> 8) & 0xFF));
+            ms.WriteByte((Byte)((addr >> 16) & 0xFF));
+        }
+        return ms.ToArray();
+    }
+
+    #endregion
+
+    #region 远程控制（RUN/STOP）
+
+    /// <summary>远程 RUN（运行）</summary>
+    /// <param name="clearMode">清除模式：0=不清除，1=清除</param>
+    public virtual void RemoteRun(Byte clearMode = 0)
+    {
+        var raw = new Byte[] { clearMode };
+        var msg = new MCMessage
+        {
+            Command = MCMessage.CMD_REMOTE_RUN,
+            SubCommand = 0x0000,
+            RawRequestData = raw,
+        };
+        msg.NetworkNo = NetworkNo;
+        msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
+
+        var response = SendCommand(msg);
+        if (response.EndCode != 0)
+            throw new MCException(response.EndCode);
+    }
+
+    /// <summary>远程 STOP（停止）</summary>
+    public virtual void RemoteStop()
+    {
+        var msg = new MCMessage
+        {
+            Command = MCMessage.CMD_REMOTE_STOP,
+            SubCommand = 0x0000,
+        };
+        msg.NetworkNo = NetworkNo;
+        msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
+
+        var response = SendCommand(msg);
+        if (response.EndCode != 0)
+            throw new MCException(response.EndCode);
+    }
+
+    #endregion
+
     #region 底层通信
 
     /// <summary>发送命令并接收响应（线程安全，3E 帧）</summary>
@@ -370,19 +522,38 @@ public class MCProtocol : DisposeBase
 
             try
             {
-                _stream.Write(buf, 0, buf.Length);
-
-                MCResponse response;
-                if (DataFormat.IsAscii())
+                if (TransportMode == MCTransportMode.Udp)
                 {
-                    response = ReceiveAsciiResponse(span);
+                    _udp.Send(buf, buf.Length);
+
+                    MCResponse response;
+                    if (DataFormat.IsAscii())
+                    {
+                        response = ReceiveAsciiResponseUdp(span);
+                    }
+                    else
+                    {
+                        response = ReceiveBinaryResponseUdp(span);
+                    }
+
+                    return response;
                 }
                 else
                 {
-                    response = ReceiveBinaryResponse(span);
-                }
+                    _stream.Write(buf, 0, buf.Length);
 
-                return response;
+                    MCResponse response;
+                    if (DataFormat.IsAscii())
+                    {
+                        response = ReceiveAsciiResponse(span);
+                    }
+                    else
+                    {
+                        response = ReceiveBinaryResponse(span);
+                    }
+
+                    return response;
+                }
             }
             catch (Exception ex)
             {
@@ -410,6 +581,15 @@ public class MCProtocol : DisposeBase
 
             try
             {
+                if (TransportMode == MCTransportMode.Udp)
+                {
+                    _udp.Send(buf, buf.Length);
+                    var udpResult = _udp.Receive(ref _remoteEndPoint);
+                    var udpResponse = new MC1EResponse();
+                    udpResponse.Read(udpResult);
+                    return udpResponse;
+                }
+
                 _stream.Write(buf, 0, buf.Length);
 
                 // 1E 响应固定头：副头(1) + 结束码(1) = 2 字节
@@ -493,6 +673,28 @@ public class MCProtocol : DisposeBase
 
         var response = new MCResponse();
         response.Read(new MemoryStream(all), null);
+        return response;
+    }
+
+    /// <summary>UDP 接收二进制模式响应</summary>
+    private MCResponse ReceiveBinaryResponseUdp(ISpan span)
+    {
+        var result = _udp.Receive(ref _remoteEndPoint);
+        var response = new MCResponse();
+        response.Read(new MemoryStream(result), null);
+        if (span != null) span.Tag += Environment.NewLine + result.ToHex("-", 64);
+        Log?.Debug("{0}<= {1}", Address, result.ToHex("-", 64));
+        return response;
+    }
+
+    /// <summary>UDP 接收 ASCII 模式响应</summary>
+    private MCResponse ReceiveAsciiResponseUdp(ISpan span)
+    {
+        var result = _udp.Receive(ref _remoteEndPoint);
+        var response = new MCResponse { DataFormat = DataFormat };
+        response.Read(new MemoryStream(result), null);
+        if (span != null) span.Tag += Environment.NewLine + result.ToHex("-", 64);
+        Log?.Debug("{0}<= {1}", Address, result.ToHex("-", 64));
         return response;
     }
 

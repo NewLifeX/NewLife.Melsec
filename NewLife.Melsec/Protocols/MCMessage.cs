@@ -34,6 +34,18 @@ public class MCMessage : IAccessor
     /// <summary>批量写入命令码</summary>
     public const UInt16 CMD_WRITE = 0x1401;
 
+    /// <summary>随机读取命令码</summary>
+    public const UInt16 CMD_RANDOM_READ = 0x0403;
+
+    /// <summary>随机写入命令码</summary>
+    public const UInt16 CMD_RANDOM_WRITE = 0x1403;
+
+    /// <summary>远程 RUN 命令码</summary>
+    public const UInt16 CMD_REMOTE_RUN = 0x1001;
+
+    /// <summary>远程 STOP 命令码</summary>
+    public const UInt16 CMD_REMOTE_STOP = 0x1002;
+
     /// <summary>字软元件子命令</summary>
     public const UInt16 SUBCMD_WORD = 0x0000;
 
@@ -88,6 +100,14 @@ public class MCMessage : IAccessor
 
     /// <summary>写入数据（仅写命令携带）。位写时每个元素 0=OFF 1=ON；字写时为字值</summary>
     public UInt16[] WriteData { get; set; }
+
+    /// <summary>原始请求数据。当设置此属性时，序列化使用它替代标准的起始地址+软元件代码+点数区域</summary>
+    /// <remarks>
+    /// 用于随机读取（0403h）、远程控制（1001h/1002h）等非标准请求。
+    /// 设置后，<see cref="StartAddress"/>、<see cref="DeviceCode"/>、<see cref="Count"/> 将被忽略。
+    /// 不包含子头+网络号+PC号+IO单元号+通道号+数据长度+监视定时器+命令+子命令等固定头。
+    /// </remarks>
+    public Byte[] RawRequestData { get; set; }
 
     #endregion
 
@@ -207,24 +227,39 @@ public class MCMessage : IAccessor
         if (WriteData != null && WriteData.Length > 0)
             writeBytes = SubCommand == SUBCMD_BIT ? PackBits(WriteData) : PackWords(WriteData);
 
-        // 数据长度 = MonTimer(2) + Cmd(2) + SubCmd(2) + StartAddr(3) + DevCode(1) + Count(2) + writeBytes
-        var dataLength = (UInt16)(12 + (writeBytes?.Length ?? 0));
-        WriteUInt16LE(stream, dataLength);
+        if (RawRequestData != null)
+        {
+            // 使用原始请求数据替换标准区域
+            var dataLength = (UInt16)(12 - 3 - 1 - 2 + RawRequestData.Length); // 标准区域=6字节，替换为自定义数据
+            WriteUInt16LE(stream, dataLength);
 
-        WriteUInt16LE(stream, MonitoringTimer);
-        WriteUInt16LE(stream, Command);
-        WriteUInt16LE(stream, SubCommand);
+            WriteUInt16LE(stream, MonitoringTimer);
+            WriteUInt16LE(stream, Command);
+            WriteUInt16LE(stream, SubCommand);
 
-        // 起始地址 3 字节 LE
-        stream.WriteByte((Byte)(StartAddress & 0xFF));
-        stream.WriteByte((Byte)((StartAddress >> 8) & 0xFF));
-        stream.WriteByte((Byte)((StartAddress >> 16) & 0xFF));
+            stream.Write(RawRequestData, 0, RawRequestData.Length);
+        }
+        else
+        {
+            // 常规：数据长度 = MonTimer(2) + Cmd(2) + SubCmd(2) + StartAddr(3) + DevCode(1) + Count(2) + writeBytes
+            var dataLength = (UInt16)(12 + (writeBytes?.Length ?? 0));
+            WriteUInt16LE(stream, dataLength);
 
-        stream.WriteByte((Byte)DeviceCode);
-        WriteUInt16LE(stream, Count);
+            WriteUInt16LE(stream, MonitoringTimer);
+            WriteUInt16LE(stream, Command);
+            WriteUInt16LE(stream, SubCommand);
 
-        if (writeBytes != null)
-            stream.Write(writeBytes, 0, writeBytes.Length);
+            // 起始地址 3 字节 LE
+            stream.WriteByte((Byte)(StartAddress & 0xFF));
+            stream.WriteByte((Byte)((StartAddress >> 8) & 0xFF));
+            stream.WriteByte((Byte)((StartAddress >> 16) & 0xFF));
+
+            stream.WriteByte((Byte)DeviceCode);
+            WriteUInt16LE(stream, Count);
+
+            if (writeBytes != null)
+                stream.Write(writeBytes, 0, writeBytes.Length);
+        }
 
         return true;
     }
@@ -247,22 +282,36 @@ public class MCMessage : IAccessor
         if (WriteData != null && WriteData.Length > 0)
             writeBytes = SubCommand == SUBCMD_BIT ? PackBits(WriteData) : PackWords(WriteData);
 
-        var dataLength = (UInt16)(12 + (writeBytes?.Length ?? 0));
-        WriteUInt16LE(ms, dataLength);
+        if (RawRequestData != null)
+        {
+            var dataLength = (UInt16)(6 + RawRequestData.Length);
+            WriteUInt16LE(ms, dataLength);
 
-        WriteUInt16LE(ms, MonitoringTimer);
-        WriteUInt16LE(ms, Command);
-        WriteUInt16LE(ms, SubCommand);
+            WriteUInt16LE(ms, MonitoringTimer);
+            WriteUInt16LE(ms, Command);
+            WriteUInt16LE(ms, SubCommand);
 
-        ms.WriteByte((Byte)(StartAddress & 0xFF));
-        ms.WriteByte((Byte)((StartAddress >> 8) & 0xFF));
-        ms.WriteByte((Byte)((StartAddress >> 16) & 0xFF));
+            ms.Write(RawRequestData, 0, RawRequestData.Length);
+        }
+        else
+        {
+            var dataLength = (UInt16)(12 + (writeBytes?.Length ?? 0));
+            WriteUInt16LE(ms, dataLength);
 
-        ms.WriteByte((Byte)DeviceCode);
-        WriteUInt16LE(ms, Count);
+            WriteUInt16LE(ms, MonitoringTimer);
+            WriteUInt16LE(ms, Command);
+            WriteUInt16LE(ms, SubCommand);
 
-        if (writeBytes != null)
-            ms.Write(writeBytes, 0, writeBytes.Length);
+            ms.WriteByte((Byte)(StartAddress & 0xFF));
+            ms.WriteByte((Byte)((StartAddress >> 8) & 0xFF));
+            ms.WriteByte((Byte)((StartAddress >> 16) & 0xFF));
+
+            ms.WriteByte((Byte)DeviceCode);
+            WriteUInt16LE(ms, Count);
+
+            if (writeBytes != null)
+                ms.Write(writeBytes, 0, writeBytes.Length);
+        }
 
         // 二进制字节 → ASCII 十六进制字符串 → 写入输出流
         var binary = ms.ToArray();

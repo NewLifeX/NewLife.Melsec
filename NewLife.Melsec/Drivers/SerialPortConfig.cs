@@ -5,7 +5,7 @@ using System.Text;
 using System.Xml.Serialization;
 using NewLife.Xml;
 
-namespace NewLife.Net
+namespace NewLife.Melsec.Drivers
 {
     /// <summary>串口配置</summary>
     [XmlConfigFile("Config\\Serial.config")]

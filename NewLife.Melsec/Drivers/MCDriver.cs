@@ -361,4 +361,67 @@ public class MCDriver : DriverBase
     }
 
     #endregion
+
+    #region 标签名访问（Tag）
+
+    /// <summary>标签名到地址的映射字典。Key=标签名，Value=地址字符串（如 D100、M200）</summary>
+    public IDictionary<String, String> TagMap { get; set; } = new Dictionary<String, String>();
+
+    /// <summary>设置标签映射</summary>
+    /// <param name="tag">标签名</param>
+    /// <param name="address">地址字符串（如 D100、M200）</param>
+    public void SetTag(String tag, String address)
+    {
+        TagMap[tag] = address;
+    }
+
+    /// <summary>批量设置标签映射</summary>
+    /// <param name="tags">标签名→地址映射</param>
+    public void SetTags(IDictionary<String, String> tags)
+    {
+        foreach (var kv in tags)
+        {
+            TagMap[kv.Key] = kv.Value;
+        }
+    }
+
+    /// <summary>通过标签名读取数据</summary>
+    /// <param name="node">节点对象</param>
+    /// <param name="tag">标签名</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>读取结果</returns>
+    public async Task<ReadResult> ReadTagAsync(INode node, String tag, CancellationToken cancellationToken = default)
+    {
+        if (!TagMap.TryGetValue(tag, out var address))
+            throw new ArgumentException($"标签 [{tag}] 未在 TagMap 中定义", nameof(tag));
+
+        IPoint point = new PointModel
+        {
+            Name = tag,
+            Address = address,
+        };
+
+        return await ReadAsync(node, [point], cancellationToken);
+    }
+
+    /// <summary>通过标签名写入数据</summary>
+    /// <param name="node">节点对象</param>
+    /// <param name="tag">标签名</param>
+    /// <param name="value">值</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    public async Task WriteTagAsync(INode node, String tag, Object value, CancellationToken cancellationToken = default)
+    {
+        if (!TagMap.TryGetValue(tag, out var address))
+            throw new ArgumentException($"标签 [{tag}] 未在 TagMap 中定义", nameof(tag));
+
+        IPoint point = new PointModel
+        {
+            Name = tag,
+            Address = address,
+        };
+
+        await WriteAsync(node, [new WriteRequest { Point = point, Value = value }], cancellationToken);
+    }
+
+    #endregion
 }

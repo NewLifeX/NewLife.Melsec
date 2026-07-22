@@ -2,8 +2,6 @@
 using System.Text;
 using NewLife.Data;
 using NewLife.Serialization;
-using static System.Collections.Specialized.BitVector32;
-
 namespace NewLife.Melsec.Protocols;
 
 /// <summary>三菱FxLinks响应</summary>
