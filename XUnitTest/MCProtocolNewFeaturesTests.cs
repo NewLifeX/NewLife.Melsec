@@ -152,6 +152,77 @@ public class MCProtocolNewFeaturesTests
 
     #endregion
 
+    #region 串口传输（MC-15）
+
+    [Fact]
+    [DisplayName("Serial 模式默认属性值正确")]
+    public void SerialMode_DefaultProperties()
+    {
+        var protocol = new MCProtocol
+        {
+            TransportMode = MCTransportMode.Serial,
+            Address = "COM3",
+        };
+
+        Assert.Equal(MCTransportMode.Serial, protocol.TransportMode);
+        Assert.Equal(9600, protocol.Baudrate);
+        Assert.Equal(8, protocol.DataBits);
+        Assert.Equal("COM3", protocol.Address);
+    }
+
+    [Fact]
+    [DisplayName("Serial 模式 3E 帧序列化与 TCP 一致")]
+    public void SerialMode_3EFrame_SameAsTcp()
+    {
+        var msg = MCMessage.BuildReadWord(DeviceCode.D, 100, 4);
+        var bytes = msg.ToBytes();
+
+        // 帧格式不受传输模式影响
+        Assert.Equal(0x50, bytes[0]);
+        Assert.Equal(0x00, bytes[1]);
+        Assert.Equal(0x01, bytes[11]); // 0401h LE
+        Assert.Equal(0x04, bytes[12]);
+    }
+
+    [Fact]
+    [DisplayName("Serial 模式 1E 帧序列化与 3E 一致")]
+    public void SerialMode_1EFrame_Matches3E()
+    {
+        var msg = MC1EMessage.BuildReadWord(MC1EDeviceCode.D, 100, 4);
+        var bytes = msg.ToBytes();
+
+        // 1E 帧格式：副头 + PLC号 + 监视定时器 + 起始地址 + 软元件代码 + 点数
+        Assert.Equal(MC1EMessage.SUB_READ_WORD, bytes[0]);
+        Assert.Equal(0xFF, bytes[1]);
+        Assert.Equal(MC1EDeviceCode.D, (MC1EDeviceCode)bytes[6]);
+        Assert.Equal(4, (bytes[7] | (bytes[8] << 8)));
+    }
+
+    [Fact]
+    [DisplayName("MC-15 串口参数可通过属性配置")]
+    public void SerialMode_Configurable()
+    {
+        var protocol = new MCProtocol
+        {
+            TransportMode = MCTransportMode.Serial,
+            Address = "COM5",
+            Baudrate = 19200,
+            DataBits = 7,
+            Parity = System.IO.Ports.Parity.Even,
+            StopBits = System.IO.Ports.StopBits.One,
+            Timeout = 3000,
+        };
+
+        Assert.Equal("COM5", protocol.Address);
+        Assert.Equal(19200, protocol.Baudrate);
+        Assert.Equal(7, protocol.DataBits);
+        Assert.Equal(System.IO.Ports.Parity.Even, protocol.Parity);
+        Assert.Equal(System.IO.Ports.StopBits.One, protocol.StopBits);
+        Assert.Equal(3000, protocol.Timeout);
+    }
+
+    #endregion
+
     #region UDP 传输
 
     [Fact]

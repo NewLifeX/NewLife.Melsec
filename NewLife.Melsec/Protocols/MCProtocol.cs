@@ -11,6 +11,9 @@ public enum MCTransportMode
 
     /// <summary>UDP 传输</summary>
     Udp = 1,
+
+    /// <summary>串口传输（RS-232/RS-485）。帧格式与 3E/1E 相同，通过 SerialPort 传输</summary>
+    Serial = 2,
 }
 
 /// <summary>三菱MC协议栈（TCP长连接，支持 3E/1E 帧）</summary>
@@ -27,13 +30,13 @@ public class MCProtocol : DisposeBase
     /// <summary>名称</summary>
     public String Name { get; set; }
 
-    /// <summary>PLC地址。格式：IP:端口，如 192.168.1.10:6000</summary>
+    /// <summary>PLC地址。格式：IP:端口（如 192.168.1.10:6000）或串口名（如 COM3）</summary>
     public String Address { get; set; }
 
     /// <summary>帧类型。3E 帧（默认）或 1E 帧</summary>
     public MCFrameType FrameType { get; set; } = MCFrameType.Frame3E;
 
-    /// <summary>传输模式。TCP（默认）或 UDP</summary>
+    /// <summary>传输模式。TCP（默认）、UDP 或 Serial（串口）</summary>
     public MCTransportMode TransportMode { get; set; } = MCTransportMode.Tcp;
 
     /// <summary>网络号（仅 3E 帧）。通常 0x00</summary>
@@ -48,6 +51,18 @@ public class MCProtocol : DisposeBase
     /// <summary>网络超时（毫秒）。默认 5000ms</summary>
     public Int32 Timeout { get; set; } = 5000;
 
+    /// <summary>波特率（串口模式）。默认 9600</summary>
+    public Int32 Baudrate { get; set; } = 9600;
+
+    /// <summary>数据位（串口模式）。默认 8</summary>
+    public Int32 DataBits { get; set; } = 8;
+
+    /// <summary>奇偶校验（串口模式）。默认 None</summary>
+    public System.IO.Ports.Parity Parity { get; set; } = System.IO.Ports.Parity.None;
+
+    /// <summary>停止位（串口模式）。默认 One</summary>
+    public System.IO.Ports.StopBits StopBits { get; set; } = System.IO.Ports.StopBits.One;
+
     /// <summary>性能追踪器</summary>
     public ITracer Tracer { get; set; }
 
@@ -57,6 +72,7 @@ public class MCProtocol : DisposeBase
     private TcpClient _client;
     private NetworkStream _stream;
     private UdpClient _udp;
+    private System.IO.Ports.SerialPort _serialPort;
     private System.Net.IPEndPoint _remoteEndPoint;
     private readonly Object _lock = new();
 
@@ -78,10 +94,25 @@ public class MCProtocol : DisposeBase
 
     #region 连接管理
 
-    /// <summary>打开连接（TCP 或 UDP）</summary>
+    /// <summary>打开连接（TCP/UDP/Serial）</summary>
     public void Open()
     {
-        if (TransportMode == MCTransportMode.Udp)
+        if (TransportMode == MCTransportMode.Serial)
+        {
+            if (_serialPort?.IsOpen == true) return;
+
+            var portName = Address ?? throw new InvalidOperationException("Address 未设置（串口模式需指定 COM 口）");
+
+            _serialPort = new System.IO.Ports.SerialPort(portName, Baudrate, Parity, DataBits, StopBits)
+            {
+                ReadTimeout = Timeout,
+                WriteTimeout = Timeout,
+            };
+            _serialPort.Open();
+
+            WriteLog("MCProtocol.Open Serial {0} {1},{2},{3},{4}", portName, Baudrate, DataBits, Parity, StopBits);
+        }
+        else if (TransportMode == MCTransportMode.Udp)
         {
             if (_udp != null) return;
 
@@ -126,12 +157,22 @@ public class MCProtocol : DisposeBase
         _client?.TryDispose();
         _client = null;
         if (_udp != null) { ((IDisposable)_udp).Dispose(); _udp = null; }
+        if (_serialPort != null)
+        {
+            if (_serialPort.IsOpen) _serialPort.Close();
+            _serialPort.Dispose();
+            _serialPort = null;
+        }
     }
 
-    /// <summary>确保连接有效，断线则重连（仅 TCP）</summary>
+    /// <summary>确保连接有效，断线则重连</summary>
     protected void EnsureConnect()
     {
-        if (TransportMode == MCTransportMode.Udp)
+        if (TransportMode == MCTransportMode.Serial)
+        {
+            if (_serialPort?.IsOpen != true) Open();
+        }
+        else if (TransportMode == MCTransportMode.Udp)
         {
             Open();
         }
@@ -522,7 +563,12 @@ public class MCProtocol : DisposeBase
 
             try
             {
-                if (TransportMode == MCTransportMode.Udp)
+                if (TransportMode == MCTransportMode.Serial)
+                {
+                    _serialPort.Write(buf, 0, buf.Length);
+                    return ReceiveSerialResponse(span);
+                }
+                else if (TransportMode == MCTransportMode.Udp)
                 {
                     _udp.Send(buf, buf.Length);
 
@@ -581,7 +627,12 @@ public class MCProtocol : DisposeBase
 
             try
             {
-                if (TransportMode == MCTransportMode.Udp)
+                if (TransportMode == MCTransportMode.Serial)
+                {
+                    _serialPort.Write(buf, 0, buf.Length);
+                    return ReceiveSerialResponse1E(request, span);
+                }
+                else if (TransportMode == MCTransportMode.Udp)
                 {
                     _udp.Send(buf, buf.Length);
                     var udpResult = _udp.Receive(ref _remoteEndPoint);
@@ -673,6 +724,65 @@ public class MCProtocol : DisposeBase
 
         var response = new MCResponse();
         response.Read(new MemoryStream(all), null);
+        return response;
+    }
+
+    /// <summary>串口接收二进制/ASCII 模式响应</summary>
+    private MCResponse ReceiveSerialResponse(ISpan span)
+    {
+        // 串口没有消息边界，等待一段时间后读取所有可用字节
+        var totalTimeout = Timeout;
+        var elapsed = 0;
+        var waitBetween = 50;
+
+        // 等待数据到达
+        while (elapsed < totalTimeout && _serialPort.BytesToRead < 2)
+        {
+            System.Threading.Thread.Sleep(waitBetween);
+            elapsed += waitBetween;
+        }
+
+        if (_serialPort.BytesToRead == 0)
+            throw new TimeoutException("MC 串口响应超时");
+
+        // 读取可用字节
+        var available = _serialPort.BytesToRead;
+        var result = new Byte[available];
+        _serialPort.Read(result, 0, available);
+
+        if (span != null) span.Tag += Environment.NewLine + result.ToHex("-", 64);
+        Log?.Debug("{0}<= {1}", Address, result.ToHex("-", 64));
+
+        var response = new MCResponse { DataFormat = DataFormat };
+        response.Read(new MemoryStream(result), null);
+        return response;
+    }
+
+    /// <summary>串口接收 1E 帧响应</summary>
+    private MC1EResponse ReceiveSerialResponse1E(MC1EMessage request, ISpan span)
+    {
+        var totalTimeout = Timeout;
+        var elapsed = 0;
+        var waitBetween = 50;
+
+        while (elapsed < totalTimeout && _serialPort.BytesToRead < MC1EResponse.FIXED_HEADER_LEN)
+        {
+            System.Threading.Thread.Sleep(waitBetween);
+            elapsed += waitBetween;
+        }
+
+        if (_serialPort.BytesToRead == 0)
+            throw new TimeoutException("MC 1E 串口响应超时");
+
+        var available = _serialPort.BytesToRead;
+        var result = new Byte[available];
+        _serialPort.Read(result, 0, available);
+
+        if (span != null) span.Tag += Environment.NewLine + result.ToHex("-", 64);
+        Log?.Debug("{0}<= {1}", Address, result.ToHex("-", 64));
+
+        var response = new MC1EResponse();
+        response.Read(result);
         return response;
     }
 
