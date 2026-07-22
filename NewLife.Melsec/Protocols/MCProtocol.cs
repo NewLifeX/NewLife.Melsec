@@ -556,14 +556,15 @@ public class MCProtocol : DisposeBase
 
     /// <summary>远程密码解锁。发送密码解锁 PLC，使其允许远程操作</summary>
     /// <remarks>
-    /// MC 协议命令 1630h。密码为 4 字符 ASCII 字符串，发送格式为：
+    /// MC 协议命令 1630h。密码为 ASCII 字符串，发送格式为：
     /// 密码长度(2B LE) + 密码 ASCII(N 字节)。
     /// 解锁后 PLC 允许远程 RUN/STOP 等操作。
     /// </remarks>
-    /// <param name="password">密码。4 字符 ASCII 字符串</param>
+    /// <param name="password">密码。ASCII 字符串</param>
     public virtual void RemoteUnlock(String password)
     {
-        if (password.IsNullOrEmpty()) throw new ArgumentNullException(nameof(password));
+        if (password == null) throw new ArgumentNullException(nameof(password));
+        if (password.Length == 0) throw new ArgumentException("密码不能为空", nameof(password));
 
         var raw = BuildPasswordRequestData(password);
         var msg = new MCMessage
@@ -587,10 +588,11 @@ public class MCProtocol : DisposeBase
     /// MC 协议命令 1631h。与 RemoteUnlock 使用相同密码格式。
     /// 锁定后 PLC 拒绝远程 RUN/STOP 等操作。
     /// </remarks>
-    /// <param name="password">密码。4 字符 ASCII 字符串</param>
+    /// <param name="password">密码。ASCII 字符串</param>
     public virtual void RemoteLock(String password)
     {
-        if (password.IsNullOrEmpty()) throw new ArgumentNullException(nameof(password));
+        if (password == null) throw new ArgumentNullException(nameof(password));
+        if (password.Length == 0) throw new ArgumentException("密码不能为空", nameof(password));
 
         var raw = BuildPasswordRequestData(password);
         var msg = new MCMessage
@@ -610,7 +612,7 @@ public class MCProtocol : DisposeBase
     }
 
     /// <summary>构建远程密码锁定/解锁请求数据</summary>
-    /// <param name="password">4 字符 ASCII 密码</param>
+    /// <param name="password">ASCII 密码</param>
     /// <returns>请求数据：密码长度(2B LE) + 密码 ASCII</returns>
     private static Byte[] BuildPasswordRequestData(String password)
     {
@@ -636,6 +638,7 @@ public class MCProtocol : DisposeBase
     {
         if (wordDevices == null) throw new ArgumentNullException(nameof(wordDevices));
         if (doubleWordDevices == null) throw new ArgumentNullException(nameof(doubleWordDevices));
+        if (wordDevices.Length + doubleWordDevices.Length == 0) throw new ArgumentException("至少需要一个监视地址");
 
         var raw = BuildMonitorRegistRequestData(wordDevices, doubleWordDevices);
         var msg = new MCMessage
@@ -659,6 +662,9 @@ public class MCProtocol : DisposeBase
         (DeviceCode code, Int32 addr)[] wordDevices,
         (DeviceCode code, Int32 addr)[] doubleWordDevices)
     {
+        if (wordDevices.Length > 255) throw new ArgumentOutOfRangeException(nameof(wordDevices), "字设备数量不能超过 255");
+        if (doubleWordDevices.Length > 255) throw new ArgumentOutOfRangeException(nameof(doubleWordDevices), "双字设备数量不能超过 255");
+
         using var ms = new MemoryStream();
         // 字设备数量（1 字节）
         ms.WriteByte((Byte)wordDevices.Length);

@@ -25,7 +25,7 @@ NewLife.Melsec 是基于 **NewLife.IoT** 标准接口规范的三菱 PLC 纯托�
 - **批量读取优化**：`BuildSegments` 算法自动合并相邻地址，减少通信次数，大幅提升采集效率
 - **多站号支持**：同一串口可连接多台 PLC，驱动层用引用计数管理共享连接生命周期
 - **数据类型转换**：`ConvertToWords` 支持 Boolean/Int16/Int32/Float/Double → UInt16[]，写操作无需手动编码
-- **高级协议功能**：支持随机读取（0403h）、远程 PLC 启停（RUN/STOP）、UDP/串口多传输模式
+- **高级协议功能**：支持 4E 帧（序列号校验）、随机读取（0403h）、远程 PLC 启停（RUN/STOP）、远程密码锁定、监视注册、UDP/串口多传输模式
 - **APM 链路追踪**：内置 `ITracer` 埋点，与星尘分布式平台无缝集成，方便排查通信问题
 - **跨平台多目标**：`net10.0/net9.0/net8.0/net7.0/net6.0/netstandard2.1/netstandard2.0/net461/net45`，支持从 .NET Framework 4.5 到 .NET 10
 
@@ -46,6 +46,7 @@ NewLife.Melsec 是基于 **NewLife.IoT** 标准接口规范的三菱 PLC 纯托�
 | MC 3E 帧（二进制/ASCII） | TCP/IP 以太网 | Q/iQ-R/L 系列、FX3U-ENET、FX5U 等 | ✅ 已完成 |
 | MC 1E 帧 | TCP/IP 以太网 | A 系列（旧式兼容） | ✅ 已完成 |
 | SLMP（3C 帧） | TCP/IP 以太网 | iQ-R/iQ-F 系列（最新标准） | ✅ 已完成 |
+| MC 4E 帧 | TCP/IP 以太网 | iQ-R 系列（最新扩展帧，含序列号） | ✅ 已完成 |
 | MC（UDP/串口模式） | UDP / 串口 | 支持多种传输方式 | ✅ 已完成 |
 
 ## FxLinks 协议
