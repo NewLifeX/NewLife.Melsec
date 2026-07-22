@@ -308,4 +308,211 @@ public class MCProtocolNewFeaturesTests
     }
 
     #endregion
+
+    #region 远程密码锁定（Remote Password Lock）
+
+    [Fact]
+    [DisplayName("远程密码解锁请求 1630h 数据格式正确")]
+    public void RemoteUnlock_RequestFormat()
+    {
+        var raw = InvokeBuildPasswordRequestData("pass");
+
+        // 总长度 = 长度字段(2) + 密码(4) = 6
+        Assert.Equal(6, raw.Length);
+        // 验证密码长度字段 (LE)
+        Assert.Equal(0x04, raw[0]);
+        Assert.Equal(0x00, raw[1]);
+        // 验证密码 ASCII
+        Assert.Equal((Byte)'p', raw[2]);
+        Assert.Equal((Byte)'a', raw[3]);
+        Assert.Equal((Byte)'s', raw[4]);
+        Assert.Equal((Byte)'s', raw[5]);
+    }
+
+    [Fact]
+    [DisplayName("远程密码解锁/锁定 通过 MCMessage 构建完整帧")]
+    public void RemoteUnlock_FullFrame()
+    {
+        // 通过 MCMessage 模拟发送 RemoteUnlock 命令
+        var raw = InvokeBuildPasswordRequestData("pass");
+        var msg = new MCMessage
+        {
+            Command = MCMessage.CMD_REMOTE_UNLOCK,
+            SubCommand = 0x0000,
+            RawRequestData = raw,
+        };
+
+        var bytes = msg.ToBytes();
+
+        // 验证命令码 1630h (LE)
+        Assert.Equal(0x30, bytes[11]);
+        Assert.Equal(0x16, bytes[12]);
+        // 验证子命令 0000h
+        Assert.Equal(0x00, bytes[13]);
+        Assert.Equal(0x00, bytes[14]);
+        // 验证密码长度
+        Assert.Equal(0x04, bytes[15]);
+        Assert.Equal(0x00, bytes[16]);
+        // 验证密码 "pass"
+        Assert.Equal((Byte)'p', bytes[17]);
+        Assert.Equal((Byte)'a', bytes[18]);
+        Assert.Equal((Byte)'s', bytes[19]);
+        Assert.Equal((Byte)'s', bytes[20]);
+    }
+
+    [Fact]
+    [DisplayName("远程锁定命令 1631h 与解锁命令区分")]
+    public void RemoteLock_Command_Differs_From_Unlock()
+    {
+        var raw = InvokeBuildPasswordRequestData("pass");
+
+        var unlockMsg = new MCMessage
+        {
+            Command = MCMessage.CMD_REMOTE_UNLOCK,
+            SubCommand = 0x0000,
+            RawRequestData = raw,
+        };
+        var lockMsg = new MCMessage
+        {
+            Command = MCMessage.CMD_REMOTE_LOCK,
+            SubCommand = 0x0000,
+            RawRequestData = raw,
+        };
+
+        var unlockBytes = unlockMsg.ToBytes();
+        var lockBytes = lockMsg.ToBytes();
+
+        // 命令码不同：1630h vs 1631h
+        Assert.Equal(0x30, unlockBytes[11]);
+        Assert.Equal(0x16, unlockBytes[12]);
+        Assert.Equal(0x31, lockBytes[11]);
+        Assert.Equal(0x16, lockBytes[12]);
+    }
+
+    #endregion
+
+    #region 监视注册（Monitor Registration）
+
+    [Fact]
+    [DisplayName("监视注册 0801h 请求数据格式正确")]
+    public void MonitorRegist_RequestFormat()
+    {
+        var wordDevices = new (DeviceCode, Int32)[]
+        {
+            (DeviceCode.D, 0),
+            (DeviceCode.D, 1),
+        };
+        var doubleWordDevices = new (DeviceCode, Int32)[]
+        {
+            (DeviceCode.D, 2),
+            (DeviceCode.D, 4),
+        };
+
+        var raw = InvokeBuildMonitorRegistRequestData(wordDevices, doubleWordDevices);
+
+        // 字设备数量 = 2
+        Assert.Equal(2, raw[0]);
+        // 双字设备数量 = 2
+        Assert.Equal(2, raw[1]);
+        // 保留 2 字节
+        Assert.Equal(0x00, raw[2]);
+        Assert.Equal(0x00, raw[3]);
+
+        // 第1个字设备：D0 (addr=0, code=0xA8)
+        Assert.Equal(0x00, raw[4]); // addr LE byte 0
+        Assert.Equal(0x00, raw[5]); // addr LE byte 1
+        Assert.Equal(0x00, raw[6]); // addr LE byte 2
+        Assert.Equal(0xA8, raw[7]); // code
+
+        // 第2个字设备：D1 (addr=1, code=0xA8)
+        Assert.Equal(0x01, raw[8]);
+        Assert.Equal(0x00, raw[9]);
+        Assert.Equal(0x00, raw[10]);
+        Assert.Equal(0xA8, raw[11]);
+
+        // 第1个双字设备：D2 (addr=2, code=0xA8)
+        Assert.Equal(0x02, raw[12]);
+        Assert.Equal(0x00, raw[13]);
+        Assert.Equal(0x00, raw[14]);
+        Assert.Equal(0xA8, raw[15]);
+
+        // 第2个双字设备：D4 (addr=4, code=0xA8)
+        Assert.Equal(0x04, raw[16]);
+        Assert.Equal(0x00, raw[17]);
+        Assert.Equal(0x00, raw[18]);
+        Assert.Equal(0xA8, raw[19]);
+    }
+
+    [Fact]
+    [DisplayName("监视注册通过 MCMessage 构建完整帧")]
+    public void MonitorRegist_FullFrame()
+    {
+        var wordDevices = new (DeviceCode, Int32)[] { (DeviceCode.D, 0) };
+        var doubleWordDevices = new (DeviceCode, Int32)[] { (DeviceCode.D, 2) };
+        var raw = InvokeBuildMonitorRegistRequestData(wordDevices, doubleWordDevices);
+
+        var msg = new MCMessage
+        {
+            Command = MCMessage.CMD_MONITOR_REGIST,
+            SubCommand = 0x0000,
+            RawRequestData = raw,
+        };
+
+        var bytes = msg.ToBytes();
+
+        // 验证命令码 0801h (LE)
+        Assert.Equal(0x01, bytes[11]);
+        Assert.Equal(0x08, bytes[12]);
+        // 验证子命令 0000h
+        Assert.Equal(0x00, bytes[13]);
+        Assert.Equal(0x00, bytes[14]);
+    }
+
+    #endregion
+
+    #region 辅助方法（扩展）
+
+    /// <summary>构建远程密码请求数据</summary>
+    private static Byte[] InvokeBuildPasswordRequestData(String password)
+    {
+        var pwdBytes = System.Text.Encoding.ASCII.GetBytes(password);
+        using var ms = new MemoryStream();
+        ms.WriteByte((Byte)(pwdBytes.Length & 0xFF));
+        ms.WriteByte((Byte)((pwdBytes.Length >> 8) & 0xFF));
+        ms.WriteByte((Byte)'p');
+        ms.WriteByte((Byte)'a');
+        ms.WriteByte((Byte)'s');
+        ms.WriteByte((Byte)'s');
+        return ms.ToArray();
+    }
+
+    /// <summary>构建监视注册请求数据</summary>
+    private static Byte[] InvokeBuildMonitorRegistRequestData(
+        (DeviceCode code, Int32 addr)[] wordDevices,
+        (DeviceCode code, Int32 addr)[] doubleWordDevices)
+    {
+        using var ms = new MemoryStream();
+        ms.WriteByte((Byte)wordDevices.Length);
+        ms.WriteByte((Byte)doubleWordDevices.Length);
+        ms.WriteByte(0x00);
+        ms.WriteByte(0x00);
+
+        foreach (var (code, addr) in wordDevices)
+        {
+            ms.WriteByte((Byte)(addr & 0xFF));
+            ms.WriteByte((Byte)((addr >> 8) & 0xFF));
+            ms.WriteByte((Byte)((addr >> 16) & 0xFF));
+            ms.WriteByte((Byte)code);
+        }
+        foreach (var (code, addr) in doubleWordDevices)
+        {
+            ms.WriteByte((Byte)(addr & 0xFF));
+            ms.WriteByte((Byte)((addr >> 8) & 0xFF));
+            ms.WriteByte((Byte)((addr >> 16) & 0xFF));
+            ms.WriteByte((Byte)code);
+        }
+        return ms.ToArray();
+    }
+
+    #endregion
 }

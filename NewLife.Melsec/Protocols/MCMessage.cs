@@ -46,6 +46,15 @@ public class MCMessage : IAccessor
     /// <summary>远程 STOP 命令码</summary>
     public const UInt16 CMD_REMOTE_STOP = 0x1002;
 
+    /// <summary>远程密码解锁命令码</summary>
+    public const UInt16 CMD_REMOTE_UNLOCK = 0x1630;
+
+    /// <summary>远程密码锁定命令码</summary>
+    public const UInt16 CMD_REMOTE_LOCK = 0x1631;
+
+    /// <summary>监视注册命令码</summary>
+    public const UInt16 CMD_MONITOR_REGIST = 0x0801;
+
     /// <summary>字软元件子命令</summary>
     public const UInt16 SUBCMD_WORD = 0x0000;
 

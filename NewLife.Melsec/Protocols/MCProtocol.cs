@@ -554,6 +554,141 @@ public class MCProtocol : DisposeBase
             throw new MCException(response.EndCode);
     }
 
+    /// <summary>远程密码解锁。发送密码解锁 PLC，使其允许远程操作</summary>
+    /// <remarks>
+    /// MC 协议命令 1630h。密码为 4 字符 ASCII 字符串，发送格式为：
+    /// 密码长度(2B LE) + 密码 ASCII(N 字节)。
+    /// 解锁后 PLC 允许远程 RUN/STOP 等操作。
+    /// </remarks>
+    /// <param name="password">密码。4 字符 ASCII 字符串</param>
+    public virtual void RemoteUnlock(String password)
+    {
+        if (password.IsNullOrEmpty()) throw new ArgumentNullException(nameof(password));
+
+        var raw = BuildPasswordRequestData(password);
+        var msg = new MCMessage
+        {
+            Command = MCMessage.CMD_REMOTE_UNLOCK,
+            SubCommand = 0x0000,
+            RawRequestData = raw,
+        };
+        msg.NetworkNo = NetworkNo;
+        msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
+
+        var response = SendCommand(msg);
+        if (response.EndCode != 0)
+            throw new MCException(response.EndCode);
+    }
+
+    /// <summary>远程密码锁定。发送密码重新锁定 PLC，禁止远程操作</summary>
+    /// <remarks>
+    /// MC 协议命令 1631h。与 RemoteUnlock 使用相同密码格式。
+    /// 锁定后 PLC 拒绝远程 RUN/STOP 等操作。
+    /// </remarks>
+    /// <param name="password">密码。4 字符 ASCII 字符串</param>
+    public virtual void RemoteLock(String password)
+    {
+        if (password.IsNullOrEmpty()) throw new ArgumentNullException(nameof(password));
+
+        var raw = BuildPasswordRequestData(password);
+        var msg = new MCMessage
+        {
+            Command = MCMessage.CMD_REMOTE_LOCK,
+            SubCommand = 0x0000,
+            RawRequestData = raw,
+        };
+        msg.NetworkNo = NetworkNo;
+        msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
+
+        var response = SendCommand(msg);
+        if (response.EndCode != 0)
+            throw new MCException(response.EndCode);
+    }
+
+    /// <summary>构建远程密码锁定/解锁请求数据</summary>
+    /// <param name="password">4 字符 ASCII 密码</param>
+    /// <returns>请求数据：密码长度(2B LE) + 密码 ASCII</returns>
+    private static Byte[] BuildPasswordRequestData(String password)
+    {
+        var pwdBytes = System.Text.Encoding.ASCII.GetBytes(password);
+        if (pwdBytes.Length > 255) throw new ArgumentOutOfRangeException(nameof(password), "密码过长，最多 255 字节");
+
+        using var ms = new MemoryStream();
+        MCMessage.WriteUInt16LE(ms, (UInt16)pwdBytes.Length);
+        ms.Write(pwdBytes, 0, pwdBytes.Length);
+        return ms.ToArray();
+    }
+
+    /// <summary>监视注册。注册多个字/双字软元件地址，PLC 将定期更新这些地址的值</summary>
+    /// <remarks>
+    /// MC 协议命令 0801h。注册后可调用 <see cref="MonitorRead"/> 读取已注册地址的最新值。
+    /// 单次最多监视 192 个字地址 + 192 个双字地址（或取决于 PLC 系列）。
+    /// </remarks>
+    /// <param name="wordDevices">字软元件列表（软元件代码 + 起始地址）</param>
+    /// <param name="doubleWordDevices">双字软元件列表（软元件代码 + 起始地址）</param>
+    public virtual void MonitorRegist(
+        (DeviceCode code, Int32 addr)[] wordDevices,
+        (DeviceCode code, Int32 addr)[] doubleWordDevices)
+    {
+        if (wordDevices == null) throw new ArgumentNullException(nameof(wordDevices));
+        if (doubleWordDevices == null) throw new ArgumentNullException(nameof(doubleWordDevices));
+
+        var raw = BuildMonitorRegistRequestData(wordDevices, doubleWordDevices);
+        var msg = new MCMessage
+        {
+            Command = MCMessage.CMD_MONITOR_REGIST,
+            SubCommand = 0x0000,
+            RawRequestData = raw,
+        };
+        msg.NetworkNo = NetworkNo;
+        msg.PCNo = PCNo;
+        msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
+
+        var response = SendCommand(msg);
+        if (response.EndCode != 0)
+            throw new MCException(response.EndCode);
+    }
+
+    /// <summary>构建监视注册请求数据</summary>
+    private static Byte[] BuildMonitorRegistRequestData(
+        (DeviceCode code, Int32 addr)[] wordDevices,
+        (DeviceCode code, Int32 addr)[] doubleWordDevices)
+    {
+        using var ms = new MemoryStream();
+        // 字设备数量（1 字节）
+        ms.WriteByte((Byte)wordDevices.Length);
+        // 双字设备数量（1 字节）
+        ms.WriteByte((Byte)doubleWordDevices.Length);
+        // 保留（2 字节）
+        ms.WriteByte(0x00);
+        ms.WriteByte(0x00);
+
+        // 字设备地址列表：地址(3B LE) + 代码(1B)
+        foreach (var (code, addr) in wordDevices)
+        {
+            ms.WriteByte((Byte)(addr & 0xFF));
+            ms.WriteByte((Byte)((addr >> 8) & 0xFF));
+            ms.WriteByte((Byte)((addr >> 16) & 0xFF));
+            ms.WriteByte((Byte)code);
+        }
+
+        // 双字设备地址列表：地址(3B LE) + 代码(1B)
+        foreach (var (code, addr) in doubleWordDevices)
+        {
+            ms.WriteByte((Byte)(addr & 0xFF));
+            ms.WriteByte((Byte)((addr >> 8) & 0xFF));
+            ms.WriteByte((Byte)((addr >> 16) & 0xFF));
+            ms.WriteByte((Byte)code);
+        }
+
+        return ms.ToArray();
+    }
+
     #endregion
 
     #region 底层通信
