@@ -33,8 +33,11 @@ public class MCProtocol : DisposeBase
     /// <summary>PLC地址。格式：IP:端口（如 192.168.1.10:6000）或串口名（如 COM3）</summary>
     public String Address { get; set; }
 
-    /// <summary>帧类型。3E 帧（默认）或 1E 帧</summary>
+    /// <summary>帧类型。3E 帧（默认）、1E 帧或 4E 帧</summary>
     public MCFrameType FrameType { get; set; } = MCFrameType.Frame3E;
+
+    /// <summary>4E 帧序列号计数器。每次发送 4E 帧请求时递增</summary>
+    private UInt16 _serialNumber;
 
     /// <summary>传输模式。TCP（默认）、UDP 或 Serial（串口）</summary>
     public MCTransportMode TransportMode { get; set; } = MCTransportMode.Tcp;
@@ -197,6 +200,7 @@ public class MCProtocol : DisposeBase
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
         msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -216,6 +220,7 @@ public class MCProtocol : DisposeBase
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
         msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -234,6 +239,7 @@ public class MCProtocol : DisposeBase
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
         msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -251,6 +257,7 @@ public class MCProtocol : DisposeBase
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
         msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -454,6 +461,7 @@ public class MCProtocol : DisposeBase
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
         msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -477,6 +485,7 @@ public class MCProtocol : DisposeBase
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
         msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -520,6 +529,7 @@ public class MCProtocol : DisposeBase
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
         msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -537,6 +547,7 @@ public class MCProtocol : DisposeBase
         msg.NetworkNo = NetworkNo;
         msg.PCNo = PCNo;
         msg.DataFormat = DataFormat;
+        msg.FrameType = FrameType;
 
         var response = SendCommand(msg);
         if (response.EndCode != 0)
@@ -547,7 +558,7 @@ public class MCProtocol : DisposeBase
 
     #region 底层通信
 
-    /// <summary>发送命令并接收响应（线程安全，3E 帧）</summary>
+    /// <summary>发送命令并接收响应（线程安全，3E/4E 帧）</summary>
     /// <param name="request">请求消息</param>
     /// <returns>响应消息</returns>
     internal protected virtual MCResponse SendCommand(MCMessage request)
@@ -555,6 +566,12 @@ public class MCProtocol : DisposeBase
         lock (_lock)
         {
             EnsureConnect();
+
+            // 4E 帧自动分配序列号
+            if (request.FrameType.Is4E())
+            {
+                request.SerialNumber = ++_serialNumber;
+            }
 
             var buf = request.ToBytes();
             using var span = Tracer?.NewSpan("mc:SendCommand", buf.ToHex("-"));
@@ -703,12 +720,26 @@ public class MCProtocol : DisposeBase
     /// <summary>接收二进制模式响应</summary>
     private MCResponse ReceiveBinaryResponse(ISpan span)
     {
-        // 读取固定头：子头(2)+网络号(1)+PC号(1)+IO单元号(2)+通道号(1)+数据长度(2) = 9字节
-        var header = new Byte[MCResponse.FIXED_HEADER_LEN];
-        ReadFully(_stream, header, 0, header.Length);
+        // 先读子头 2 字节判断帧类型
+        var subHeader = new Byte[2];
+        ReadFully(_stream, subHeader, 0, 2);
 
-        // 从头部偏移 7~8 读取数据长度（LE）
-        var dataLength = header[7] | (header[8] << 8);
+        var is4E = (subHeader[0] == 0xD4 && subHeader[1] == 0x00);
+        var headerLen = is4E ? MCResponse.FIXED_HEADER_4E_LEN : MCResponse.FIXED_HEADER_LEN;
+
+        // 读取剩余固定头
+        var remainingHeader = new Byte[headerLen - 2];
+        ReadFully(_stream, remainingHeader, 0, remainingHeader.Length);
+
+        // 合并完整固定头
+        var header = new Byte[headerLen];
+        Array.Copy(subHeader, 0, header, 0, 2);
+        Array.Copy(remainingHeader, 0, header, 2, remainingHeader.Length);
+
+        // 从头部读取数据长度
+        // 3E: 偏移 7~8；4E: 偏移 11~12（因多了 4 字节序列号）
+        var dataLengthOffset = is4E ? 11 : 7;
+        var dataLength = header[dataLengthOffset] | (header[dataLengthOffset + 1] << 8);
 
         // 读取可变部分：结束码(2) + 响应数据(N)
         var data = new Byte[dataLength];
@@ -812,17 +843,33 @@ public class MCProtocol : DisposeBase
     private MCResponse ReceiveAsciiResponse(ISpan span)
     {
         // ASCII 模式：每个字节用 2 个 ASCII 十六进制字符表示
-        // 固定头 9 字节 → 18 ASCII 字符
-        var headerLen = MCResponse.FIXED_HEADER_ASCII_LEN;
-        var headerBuf = new Byte[headerLen];
-        ReadFully(_stream, headerBuf, 0, headerLen);
+        // 先读子头 "D000" 或 "D400" (4 ASCII chars) 判断帧类型
+        var subHeaderBuf = new Byte[4];
+        ReadFully(_stream, subHeaderBuf, 0, 4);
+        var subHeaderHex = System.Text.Encoding.ASCII.GetString(subHeaderBuf);
+        var subHeader = subHeaderHex.ToHex();
 
-        // 将 ASCII 十六进制字符转换为二进制字节
-        var headerHex = System.Text.Encoding.ASCII.GetString(headerBuf);
-        var header = headerHex.ToHex();
+        var is4E = (subHeader[0] == 0xD4 && subHeader[1] == 0x00);
+        var headerAsciiLen = is4E ? MCResponse.FIXED_HEADER_4E_ASCII_LEN : MCResponse.FIXED_HEADER_ASCII_LEN;
 
-        // 从二进制头部偏移 7~8 读取数据长度（LE）
-        var dataLength = header[7] | (header[8] << 8);
+        // 读取剩余固定头
+        var remainingAsciiLen = headerAsciiLen - 4;
+        var remainingBuf = new Byte[remainingAsciiLen];
+        if (remainingAsciiLen > 0)
+            ReadFully(_stream, remainingBuf, 0, remainingAsciiLen);
+
+        var remainingHex = System.Text.Encoding.ASCII.GetString(remainingBuf);
+        var remaining = remainingHex.ToHex();
+
+        // 合并完整固定头（二进制）
+        var header = new Byte[subHeader.Length + remaining.Length];
+        Array.Copy(subHeader, 0, header, 0, subHeader.Length);
+        Array.Copy(remaining, 0, header, subHeader.Length, remaining.Length);
+
+        // 从头部读取数据长度
+        // 3E: 偏移 7~8；4E: 偏移 11~12
+        var dataLengthOffset = is4E ? 11 : 7;
+        var dataLength = header[dataLengthOffset] | (header[dataLengthOffset + 1] << 8);
 
         // 读取可变部分：结束码(2) + 响应数据(N) → dataLength 字节 → dataLength * 2 ASCII 字符
         var dataAsciiLen = dataLength * 2;

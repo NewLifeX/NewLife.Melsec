@@ -24,14 +24,26 @@ public class MCResponse : IAccessor
     /// <summary>3E帧子头（响应，二进制）</summary>
     public const UInt16 SUB_HEADER = 0x00D0;
 
+    /// <summary>4E帧子头（响应，二进制）。4E 帧在子头后增加 4 字节序列号字段</summary>
+    public const UInt16 SUB_HEADER_4E = 0x00D4;
+
     /// <summary>3E帧子头（响应，ASCII）</summary>
     public const String SUB_HEADER_ASCII = "D000";
 
-    /// <summary>响应帧固定头长度（子头+网络号+PC号+IO单元号+通道号+数据长度 = 9字节）</summary>
+    /// <summary>4E帧子头（响应，ASCII）</summary>
+    public const String SUB_HEADER_4E_ASCII = "D400";
+
+    /// <summary>3E 响应帧固定头长度（子头+网络号+PC号+IO单元号+通道号+数据长度 = 9字节）</summary>
     public const Int32 FIXED_HEADER_LEN = 9;
 
-    /// <summary>ASCII 响应帧固定头长度（9字节二进制 → 18 ASCII 字符 + 数据长度字段本身 = 9*2 = 18）</summary>
+    /// <summary>4E 响应帧固定头长度（子头+序列号+网络号+PC号+IO单元号+通道号+数据长度 = 13字节）</summary>
+    public const Int32 FIXED_HEADER_4E_LEN = 13;
+
+    /// <summary>ASCII 3E 响应帧固定头长度（9字节二进制 → 18 ASCII 字符）</summary>
     public const Int32 FIXED_HEADER_ASCII_LEN = 18;
+
+    /// <summary>ASCII 4E 响应帧固定头长度（13字节二进制 → 26 ASCII 字符）</summary>
+    public const Int32 FIXED_HEADER_4E_ASCII_LEN = 26;
 
     #endregion
 
@@ -39,6 +51,12 @@ public class MCResponse : IAccessor
 
     /// <summary>数据格式。默认 Binary</summary>
     public MCDataFormat DataFormat { get; set; } = MCDataFormat.Binary;
+
+    /// <summary>帧类型。从子头自动检测（3E/4E）</summary>
+    public MCFrameType FrameType { get; set; } = MCFrameType.Frame3E;
+
+    /// <summary>序列号（仅 4E 帧）。用于请求-应答匹配校验</summary>
+    public UInt16 SerialNumber { get; set; }
 
     /// <summary>网络号</summary>
     public Byte NetworkNo { get; set; }
@@ -82,10 +100,26 @@ public class MCResponse : IAccessor
         if (DataFormat.IsAscii())
             return ReadAscii(stream);
 
-        // 子头 0xD0 0x00
+        // 子头 0xD0 0x00（3E）或 0xD4 0x00（4E）
         var sh0 = stream.ReadByte();
         var sh1 = stream.ReadByte();
-        if (sh0 != 0xD0 || sh1 != 0x00) return false;
+
+        if (sh0 == 0xD4 && sh1 == 0x00)
+        {
+            // 4E 帧：读取序列号（4 字节：2 字节序列号 + 2 字节保留）
+            FrameType = MCFrameType.Frame4E;
+            SerialNumber = MCMessage.ReadUInt16LE(stream);
+            stream.ReadByte(); // 保留字节
+            stream.ReadByte(); // 保留字节
+        }
+        else if (sh0 == 0xD0 && sh1 == 0x00)
+        {
+            FrameType = MCFrameType.Frame3E;
+        }
+        else
+        {
+            return false;
+        }
 
         NetworkNo = (Byte)stream.ReadByte();
         PCNo = (Byte)stream.ReadByte();
@@ -109,9 +143,24 @@ public class MCResponse : IAccessor
     /// <summary>ASCII 模式反序列化</summary>
     private Boolean ReadAscii(Stream stream)
     {
-        // 子头 "D000" (4 ASCII chars → 2 bytes)
+        // 子头 "D000" (3E) 或 "D400" (4E)，4 ASCII chars → 2 bytes
         var sh = MCMessage.ReadAsciiHex(stream, 2);
-        if (sh[0] != 0xD0 || sh[1] != 0x00) return false;
+
+        if (sh[0] == 0xD4 && sh[1] == 0x00)
+        {
+            // 4E 帧：读取序列号（4 字节：2 字节序列号 + 2 字节保留）
+            FrameType = MCFrameType.Frame4E;
+            var serialBytes = MCMessage.ReadAsciiHex(stream, 4);
+            SerialNumber = (UInt16)(serialBytes[0] | (serialBytes[1] << 8));
+        }
+        else if (sh[0] == 0xD0 && sh[1] == 0x00)
+        {
+            FrameType = MCFrameType.Frame3E;
+        }
+        else
+        {
+            return false;
+        }
 
         NetworkNo = MCMessage.ReadAsciiByte(stream);
         PCNo = MCMessage.ReadAsciiByte(stream);
@@ -140,9 +189,21 @@ public class MCResponse : IAccessor
         if (DataFormat.IsAscii())
             return WriteAscii(stream);
 
-        // 子头 0xD0 0x00
-        stream.WriteByte(0xD0);
-        stream.WriteByte(0x00);
+        if (FrameType.Is4E())
+        {
+            // 4E 帧子头 0xD4 0x00 + 序列号 4 字节
+            stream.WriteByte(0xD4);
+            stream.WriteByte(0x00);
+            MCMessage.WriteUInt16LE(stream, SerialNumber);
+            stream.WriteByte(0x00); // 保留
+            stream.WriteByte(0x00); // 保留
+        }
+        else
+        {
+            // 3E 帧子头 0xD0 0x00
+            stream.WriteByte(0xD0);
+            stream.WriteByte(0x00);
+        }
 
         stream.WriteByte(NetworkNo);
         stream.WriteByte(PCNo);
@@ -164,8 +225,21 @@ public class MCResponse : IAccessor
     private Boolean WriteAscii(Stream stream)
     {
         using var ms = new MemoryStream();
-        ms.WriteByte(0xD0);
-        ms.WriteByte(0x00);
+
+        if (FrameType.Is4E())
+        {
+            // 4E 帧子头 0xD4 0x00 + 序列号 4 字节
+            ms.WriteByte(0xD4);
+            ms.WriteByte(0x00);
+            MCMessage.WriteUInt16LE(ms, SerialNumber);
+            ms.WriteByte(0x00); // 保留
+            ms.WriteByte(0x00); // 保留
+        }
+        else
+        {
+            ms.WriteByte(0xD0);
+            ms.WriteByte(0x00);
+        }
 
         ms.WriteByte(NetworkNo);
         ms.WriteByte(PCNo);

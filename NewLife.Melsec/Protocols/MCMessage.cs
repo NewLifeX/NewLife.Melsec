@@ -55,8 +55,14 @@ public class MCMessage : IAccessor
     /// <summary>3E帧子头（请求，二进制）</summary>
     public const UInt16 SUB_HEADER = 0x0050;
 
+    /// <summary>4E帧子头（请求，二进制）。4E 帧在子头后增加 4 字节序列号字段</summary>
+    public const UInt16 SUB_HEADER_4E = 0x0054;
+
     /// <summary>3E帧子头（请求，ASCII）</summary>
     public const String SUB_HEADER_ASCII = "5000";
+
+    /// <summary>4E帧子头（请求，ASCII）</summary>
+    public const String SUB_HEADER_4E_ASCII = "5400";
 
     /// <summary>IO单元号（Q/L/FX5U系列固定值）</summary>
     public const UInt16 IO_UNIT_NO = 0x03FF;
@@ -67,6 +73,12 @@ public class MCMessage : IAccessor
 
     /// <summary>数据格式。默认 Binary</summary>
     public MCDataFormat DataFormat { get; set; } = MCDataFormat.Binary;
+
+    /// <summary>帧类型。默认 3E 帧，可切换为 4E 帧以支持序列号</summary>
+    public MCFrameType FrameType { get; set; } = MCFrameType.Frame3E;
+
+    /// <summary>序列号（仅 4E 帧）。用于请求-应答严格匹配校验</summary>
+    public UInt16 SerialNumber { get; set; }
 
     /// <summary>网络号。通常 0x00 表示本机</summary>
     public Byte NetworkNo { get; set; } = 0x00;
@@ -134,10 +146,26 @@ public class MCMessage : IAccessor
         if (DataFormat.IsAscii())
             return ReadAscii(stream);
 
-        // 子头 0x5000
+        // 子头 0x5000（3E）或 0x5400（4E）
         var sh0 = stream.ReadByte();
         var sh1 = stream.ReadByte();
-        if (sh0 != 0x50 || sh1 != 0x00) return false;
+
+        if (sh0 == 0x54 && sh1 == 0x00)
+        {
+            // 4E 帧：读取序列号（4 字节：2 字节序列号 + 2 字节保留）
+            FrameType = MCFrameType.Frame4E;
+            SerialNumber = ReadUInt16LE(stream);
+            stream.ReadByte(); // 保留字节
+            stream.ReadByte(); // 保留字节
+        }
+        else if (sh0 == 0x50 && sh1 == 0x00)
+        {
+            FrameType = MCFrameType.Frame3E;
+        }
+        else
+        {
+            return false;
+        }
 
         NetworkNo = (Byte)stream.ReadByte();
         PCNo = (Byte)stream.ReadByte();
@@ -172,9 +200,24 @@ public class MCMessage : IAccessor
     /// <summary>ASCII 模式反序列化</summary>
     private Boolean ReadAscii(Stream stream)
     {
-        // 子头 "5000" (4 ASCII chars)
+        // 子头 "5000" (3E) 或 "5400" (4E)，4 ASCII chars → 2 bytes
         var sh = ReadAsciiHex(stream, 2);
-        if (sh[0] != 0x50 || sh[1] != 0x00) return false;
+
+        if (sh[0] == 0x54 && sh[1] == 0x00)
+        {
+            // 4E 帧：读取序列号（4 字节：2 字节序列号 + 2 字节保留）
+            FrameType = MCFrameType.Frame4E;
+            var serialBytes = ReadAsciiHex(stream, 4);
+            SerialNumber = (UInt16)(serialBytes[0] | (serialBytes[1] << 8));
+        }
+        else if (sh[0] == 0x50 && sh[1] == 0x00)
+        {
+            FrameType = MCFrameType.Frame3E;
+        }
+        else
+        {
+            return false;
+        }
 
         NetworkNo = ReadAsciiByte(stream);
         PCNo = ReadAsciiByte(stream);
@@ -213,9 +256,21 @@ public class MCMessage : IAccessor
         if (DataFormat.IsAscii())
             return WriteAscii(stream);
 
-        // 子头 0x50 0x00
-        stream.WriteByte(0x50);
-        stream.WriteByte(0x00);
+        if (FrameType.Is4E())
+        {
+            // 4E 帧子头 0x54 0x00 + 序列号 4 字节
+            stream.WriteByte(0x54);
+            stream.WriteByte(0x00);
+            WriteUInt16LE(stream, SerialNumber);
+            stream.WriteByte(0x00); // 保留
+            stream.WriteByte(0x00); // 保留
+        }
+        else
+        {
+            // 3E 帧子头 0x50 0x00
+            stream.WriteByte(0x50);
+            stream.WriteByte(0x00);
+        }
 
         stream.WriteByte(NetworkNo);
         stream.WriteByte(PCNo);
@@ -269,8 +324,21 @@ public class MCMessage : IAccessor
     {
         // 先序列化为二进制字节，再整体转为 ASCII 十六进制字符串写入
         using var ms = new MemoryStream();
-        ms.WriteByte(0x50);
-        ms.WriteByte(0x00);
+
+        if (FrameType.Is4E())
+        {
+            // 4E 帧子头 0x54 0x00 + 序列号 4 字节
+            ms.WriteByte(0x54);
+            ms.WriteByte(0x00);
+            WriteUInt16LE(ms, SerialNumber);
+            ms.WriteByte(0x00); // 保留
+            ms.WriteByte(0x00); // 保留
+        }
+        else
+        {
+            ms.WriteByte(0x50);
+            ms.WriteByte(0x00);
+        }
 
         ms.WriteByte(NetworkNo);
         ms.WriteByte(PCNo);
@@ -330,10 +398,12 @@ public class MCMessage : IAccessor
         return ms.ToArray();
     }
 
-    /// <summary>创建对应的响应对象（继承当前数据格式）</summary>
+    /// <summary>创建对应的响应对象（继承当前数据格式和帧类型）</summary>
     public MCResponse CreateReply() => new()
     {
         DataFormat = DataFormat,
+        FrameType = FrameType,
+        SerialNumber = SerialNumber,
         NetworkNo = NetworkNo,
         PCNo = PCNo,
         IOUnitNo = IOUnitNo,

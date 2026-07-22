@@ -13,18 +13,19 @@ Nuget：NewLife.Melsec
 
 ## 项目简介
 
-NewLife.Melsec 是基于 **NewLife.IoT** 标准接口规范的三菱 PLC 纯托管通信库，覆盖工业现场最常用的两大协议场景：RS-485 串口（FxLinks 计算机链路协议）和 TCP 以太网（MC 协议）。整个库采用 MIT 开源协议，不依赖任何商业授权组件，支持 Windows/Linux/macOS，可在 Raspberry Pi 等 ARM 边缘设备上运行。
+NewLife.Melsec 是基于 **NewLife.IoT** 标准接口规范的三菱 PLC 纯托管通信库，覆盖 FxLinks 串口协议、MC 以太网协议（3E/1E 帧）和 SLMP 协议三大协议场景，支持 TCP/UDP/串口多传输模式。整个库采用 MIT 开源协议，不依赖任何商业授权组件，支持 Windows/Linux/macOS，可在 Raspberry Pi 等 ARM 边缘设备上运行。
 
 通过统一的 `IDriver` 接口，可一行代码接入 **ZeroIoT/IoTEdge** 网关平台，也可直接在控制台或服务程序中调用底层协议栈。
 
 ## 主要特点
 
-- **协议完整**：完整实现 FxLinks 串口协议（BR/WR/BW/WW 四指令）和 MC 以太网 3E 帧（二进制模式），覆盖三菱 FX/Q/iQ-R/L/FX5U 全系列
+- **协议完整**：完整实现 FxLinks 串口协议（BR/WR/BW/WW 四指令）、MC 以太网 3E/1E 帧（二进制+ASCII 模式）、SLMP 3C 帧，覆盖三菱 FX/Q/iQ-R/L/A/FX5U 全系列
 - **纯托管实现**：不依赖 HslCommunication 等商业库，仅基于 .NET 标准类库和 NewLife 生态
 - **IoT 生态集成**：符合 NewLife.IoT v2.6+ 的 `IDriver`/`IDriverParameter`/`INode` 规范，即插即用
 - **批量读取优化**：`BuildSegments` 算法自动合并相邻地址，减少通信次数，大幅提升采集效率
 - **多站号支持**：同一串口可连接多台 PLC，驱动层用引用计数管理共享连接生命周期
 - **数据类型转换**：`ConvertToWords` 支持 Boolean/Int16/Int32/Float/Double → UInt16[]，写操作无需手动编码
+- **高级协议功能**：支持随机读取（0403h）、远程 PLC 启停（RUN/STOP）、UDP/串口多传输模式
 - **APM 链路追踪**：内置 `ITracer` 埋点，与星尘分布式平台无缝集成，方便排查通信问题
 - **跨平台多目标**：`net10.0/net9.0/net8.0/net7.0/net6.0/netstandard2.1/netstandard2.0/net461/net45`，支持从 .NET Framework 4.5 到 .NET 10
 
@@ -32,26 +33,27 @@ NewLife.Melsec 是基于 **NewLife.IoT** 标准接口规范的三菱 PLC 纯托�
 
 | 文档 | 说明 |
 |------|------|
-| [需求文档](Doc/需求文档.md) | 愿景、模块定义、用户角色、边界约束 |
-| [功能清单](Doc/功能清单.md) | 功能点三维追踪（实现/测试/注释） |
-| [架构设计](Doc/架构设计.md) | 分层架构、帧格式、组件设计、关键流程 |
-| [竞品分析](Doc/竞品分析报告.md) | 主流竞品功能对比矩阵与差距分析 |
+| [需求文档](Doc/需求文档.md) | 愿景、核心目标、功能需求、暂缓清单与边界 |
+| [功能清单](Doc/功能清单.md) | 功能点三维追踪（实现/测试/注释）及父需求完成度 |
+| [架构设计](Doc/架构设计.md) | 分层架构、核心组件、关键流程、设计决策 |
+| [竞品分析](Doc/竞品分析.md) | 主流竞品功能对比矩阵与差距分析 |
 
 ## 协议支持
 
 | 协议 | 传输方式 | 适用 PLC 型号 | 完成状态 |
 |:---:|:---:|:---|:---:|
 | FxLinks（计算机链路） | RS-485 串口 | FX 系列（FX1S/FX1N/FX2N/FX3U 等） | ✅ 已完成 |
-| MC 3E 帧（二进制） | TCP/IP 以太网 | Q/iQ-R/L 系列、FX3U-ENET、FX5U 等 | ✅ 已完成 |
-| MC 1E 帧 | TCP/IP 以太网 | A 系列（旧式兼容） | ⬜ 规划中 |
-| SLMP（3C/4C 帧） | TCP/IP 以太网 | iQ-R/iQ-F 系列（最新标准） | ⬜ 远期规划 |
+| MC 3E 帧（二进制/ASCII） | TCP/IP 以太网 | Q/iQ-R/L 系列、FX3U-ENET、FX5U 等 | ✅ 已完成 |
+| MC 1E 帧 | TCP/IP 以太网 | A 系列（旧式兼容） | ✅ 已完成 |
+| SLMP（3C 帧） | TCP/IP 以太网 | iQ-R/iQ-F 系列（最新标准） | ✅ 已完成 |
+| MC（UDP/串口模式） | UDP / 串口 | 支持多种传输方式 | ✅ 已完成 |
 
-## FxLinks协议
-FxLinks协议常用指令：
-1. ENQ05询问，BR位读取，BW字读取，BW位写入，WW字写入，以校验和结束
-2. STX02读取响应，包括位读取和字读取的响应数据，以ETX03和校验和结束
-3. ACK确认写入响应，包括位写入和字写入
-4. NAK不确认写入响应，包括位写入和字写入
+## FxLinks 协议
+FxLinks 协议常用指令：
+1. ENQ（05）询问，BR 位读取、WR 字读取、BW 位写入、WW 字写入，以校验和结束
+2. STX（02）读取响应，包括位读取和字读取的响应数据，以 ETX（03）和校验和结束
+3. ACK（06）确认写入响应，包括位写入和字写入
+4. NAK（15）不确认写入响应，包括位写入和字写入
 
 ## 快速入门
 
@@ -139,11 +141,68 @@ A：通常是串口参数不匹配（波特率/校验位）或通信超时。请
 **Q：BatchSize / BatchStep / BatchDelay 怎么调整？**  
 A：`BatchStep=1` 表示地址差 ≤ 1 时自动合并；`BatchSize=0` 不限批次大小；`BatchDelay=10` 相邻批次间隔 10ms，有助于缓解 PLC 高频请求压力。
 
-**Q：MC 以太网协议何时支持？**  
-A：MC 3E 帧（`MCDriver` / `MCProtocol`）正在规划实现中，会完全符合 IoT 接口规范，届时地址写法与 FxLinks 保持一致。
+### MC 以太网通信（Q/iQ-R/FX5U 系列）
+
+```csharp
+using NewLife.Melsec.Protocols;
+
+// 直接使用协议层
+using var mc = new MCProtocol
+{
+    Address = "192.168.1.10:6000",
+    Timeout = 5000,
+};
+mc.Open();
+
+// 读取 D100 起 10 个字
+UInt16[] words = mc.ReadWords(DeviceCode.D, 100, 10);
+Console.WriteLine($"D100={words[0]}, D101={words[1]}");
+
+// 读取 M200 起 16 个位
+Boolean[] bits = mc.ReadBits(DeviceCode.M, 200, 16);
+
+// 写入 D100 = 1234
+mc.WriteWords(DeviceCode.D, 100, [1234]);
+```
+
+### MC 驱动模式（IoTEdge 集成）
+
+```csharp
+using NewLife.Melsec.Drivers;
+using NewLife.IoT.Drivers;
+
+var driver = new MCDriver();
+var parameter = new MCParameter
+{
+    Address   = "192.168.1.10:6000",
+    Timeout   = 5000,
+    BatchSize = 256,
+};
+
+INode node = driver.Open(device, parameter);
+
+// 批量读取（与 FxLinksDriver 接口完全一致）
+IDictionary<IPoint, Object> values = driver.Read(node, points);
+
+// 写入字寄存器
+driver.Write(node, new ThingPoint { Address = "D100" }, (Int16)123);
+
+driver.Close(node);
+```
+
+## 常见问题
+
+**Q：FxLinks 读取返回 null 是什么原因？**  
+A：通常是串口参数不匹配（波特率/校验位）或通信超时。请确认 PLC 端已设置计算机链路功能，并与驱动参数完全一致。
+
+**Q：BatchSize / BatchStep / BatchDelay 怎么调整？**  
+A：`BatchStep=1` 表示地址差 ≤ 1 时自动合并；`BatchSize=0` 不限批次大小；`BatchDelay=10` 相邻批次间隔 10ms，有助于缓解 PLC 高频请求压力。
+
+**Q：MC 协议支持哪些传输方式？**  
+A：支持 TCP（默认）、UDP、串口三种传输模式，通过 `MCParameter.TransportMode` 切换。帧类型支持 3E 帧（Qna 兼容）和 1E 帧（A 系列兼容）。
 
 **Q：如何接入 IoTEdge 网关？**  
-A：注册驱动名称为 `"MelsecFxLinks"`（`[Driver("MelsecFxLinks")]` 特性已标注），在 IoTEdge 网关平台选择该驱动并填写 `FxLinksParameter` XML 配置即可。
+A：驱动注册名称为 `"MelsecFxLinks"`（FxLinks）和 `"MelsecMC"`（MC 协议），在 IoTEdge 网关平台选择对应驱动并填写参数 XML 配置即可。
 
 ## 新生命项目矩阵
 各项目默认支持net9.0/netstandard2.1/netstandard2.0/net4.62/net4.5，旧版（2024.0801）支持net4.0/net2.0  

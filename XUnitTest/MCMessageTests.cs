@@ -480,4 +480,147 @@ public class MCMessageTests
     }
 
     #endregion
+
+    #region 4E 帧测试
+
+    [Fact]
+    [DisplayName("4E 帧读字请求 D100×4 编码验证（子头 5400h + 序列号）")]
+    public void BuildReadWord_4E_Frame()
+    {
+        var msg = MCMessage.BuildReadWord(DeviceCode.D, 100, 4);
+        msg.FrameType = MCFrameType.Frame4E;
+        msg.SerialNumber = 1;
+
+        var bytes = msg.ToBytes();
+
+        // 4E 帧：子头 0x54 0x00 + 序列号 0x01 0x00 + 保留 0x00 0x00 + 路由(5B) + 数据长度 + 定时器 + 命令 + 子命令 + 地址 + 代码 + 点数
+        // 预期：54-00-01-00-00-00-00-FF-FF-03-00-0C-00-0A-00-01-04-00-00-64-00-00-A8-04-00
+        Assert.Equal(0x54, bytes[0]);
+        Assert.Equal(0x00, bytes[1]);
+        // 序列号 = 1 (LE)
+        Assert.Equal(0x01, bytes[2]);
+        Assert.Equal(0x00, bytes[3]);
+        // 保留
+        Assert.Equal(0x00, bytes[4]);
+        Assert.Equal(0x00, bytes[5]);
+        // 网络号
+        Assert.Equal(0x00, bytes[6]);
+        // PC号
+        Assert.Equal(0xFF, bytes[7]);
+
+        // Round-trip 反序列化验证
+        var decoded = new MCMessage();
+        var ok = decoded.Read(new MemoryStream(bytes), null);
+        Assert.True(ok);
+        Assert.Equal(MCFrameType.Frame4E, decoded.FrameType);
+        Assert.Equal((UInt16)1, decoded.SerialNumber);
+        Assert.Equal(MCMessage.CMD_READ, decoded.Command);
+        Assert.Equal(MCMessage.SUBCMD_WORD, decoded.SubCommand);
+        Assert.Equal(DeviceCode.D, decoded.DeviceCode);
+        Assert.Equal(100, decoded.StartAddress);
+        Assert.Equal(4, decoded.Count);
+    }
+
+    [Fact]
+    [DisplayName("4E 帧 ASCII 模式编解码 Round-trip")]
+    public void BuildReadWord_4E_Ascii_RoundTrip()
+    {
+        var msg = MCMessage.BuildReadWord(DeviceCode.D, 100, 4);
+        msg.FrameType = MCFrameType.Frame4E;
+        msg.SerialNumber = 0x1234;
+        msg.DataFormat = MCDataFormat.Ascii;
+
+        var bytes = msg.ToBytes();
+        Assert.NotNull(bytes);
+        Assert.True(bytes.Length > 0);
+
+        // ASCII 模式反序列化
+        var decoded = new MCMessage { DataFormat = MCDataFormat.Ascii };
+        var ok = decoded.Read(new MemoryStream(bytes), null);
+        Assert.True(ok);
+        Assert.Equal(MCFrameType.Frame4E, decoded.FrameType);
+        Assert.Equal((UInt16)0x1234, decoded.SerialNumber);
+        Assert.Equal(DeviceCode.D, decoded.DeviceCode);
+        Assert.Equal(100, decoded.StartAddress);
+        Assert.Equal(4, decoded.Count);
+    }
+
+    [Fact]
+    [DisplayName("4E 帧与 3E 帧序列化长度差异")]
+    public void Frame4E_Length_Differs_From_3E()
+    {
+        var msg3E = MCMessage.BuildReadWord(DeviceCode.D, 100, 4);
+        msg3E.FrameType = MCFrameType.Frame3E;
+
+        var msg4E = MCMessage.BuildReadWord(DeviceCode.D, 100, 4);
+        msg4E.FrameType = MCFrameType.Frame4E;
+        msg4E.SerialNumber = 0x5678;
+
+        var bytes3E = msg3E.ToBytes();
+        var bytes4E = msg4E.ToBytes();
+
+        // 4E 帧比 3E 帧多 4 字节（序列号字段）
+        Assert.Equal(bytes3E.Length + 4, bytes4E.Length);
+    }
+
+    [Fact]
+    [DisplayName("4E 帧响应解析 验证子头 D400h 和序列号")]
+    public void Response_4E_Parse()
+    {
+        // 构造 4E 帧响应二进制数据
+        // D4-00 + 序列号(0x01 0x00 0x00 0x00) + 网络号(00) + PC号(FF) + IO单元号(FF03 LE) + 通道号(00)
+        // + 数据长度(06 00=6) + 结束码(00 00=成功) + 响应数据(34 12 78 56)
+        var data = new Byte[]
+        {
+            0xD4, 0x00,          // 4E 子头
+            0x01, 0x00,          // 序列号 LE = 1
+            0x00, 0x00,          // 保留
+            0x00,                // 网络号
+            0xFF,                // PC号
+            0xFF, 0x03,          // IO单元号
+            0x00,                // 通道号
+            0x06, 0x00,          // 数据长度 = 6
+            0x00, 0x00,          // 结束码 = 成功
+            0x34, 0x12,          // D100 = 0x1234
+            0x78, 0x56,          // D101 = 0x5678
+        };
+
+        var response = new MCResponse();
+        var ok = response.Read(new MemoryStream(data), null);
+        Assert.True(ok);
+        Assert.Equal(MCFrameType.Frame4E, response.FrameType);
+        Assert.Equal((UInt16)1, response.SerialNumber);
+        Assert.Equal((UInt16)0, response.EndCode);
+        Assert.NotNull(response.RawData);
+        Assert.Equal(4, response.RawData.Length);
+
+        var words = response.GetWordData();
+        Assert.Equal(2, words.Length);
+        Assert.Equal((UInt16)0x1234, words[0]);
+        Assert.Equal((UInt16)0x5678, words[1]);
+    }
+
+    [Fact]
+    [DisplayName("4E 帧响应 Write/Read Round-trip")]
+    public void Response_4E_RoundTrip()
+    {
+        var response = new MCResponse
+        {
+            FrameType = MCFrameType.Frame4E,
+            SerialNumber = 0xABCD,
+            EndCode = 0x0000,
+            RawData = new Byte[] { 0x11, 0x22, 0x33, 0x44 },
+        };
+
+        var bytes = response.ToBytes();
+
+        var decoded = new MCResponse();
+        var ok = decoded.Read(new MemoryStream(bytes), null);
+        Assert.True(ok);
+        Assert.Equal(MCFrameType.Frame4E, decoded.FrameType);
+        Assert.Equal((UInt16)0xABCD, decoded.SerialNumber);
+        Assert.Equal((UInt16)0, decoded.EndCode);
+    }
+
+    #endregion
 }

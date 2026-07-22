@@ -11,8 +11,8 @@ public class MCParameter : IDriverParameter, IDriverParameterKey
     [Description("PLC地址。格式：IP:端口，如 192.168.1.10:6000")]
     public String Address { get; set; }
 
-    /// <summary>帧类型。Frame3E=3E帧（默认，Q/iQ-R系列），Frame1E=1E帧（A系列）</summary>
-    [Description("帧类型。Frame3E=3E帧（默认，Q/iQ-R系列），Frame1E=1E帧（A系列）")]
+    /// <summary>帧类型。Frame3E=3E帧（默认，Q/iQ-R系列），Frame1E=1E帧（A系列），Frame4E=4E帧（iQ-R系列，含序列号）</summary>
+    [Description("帧类型。Frame3E=3E帧（默认，Q/iQ-R系列），Frame1E=1E帧（A系列），Frame4E=4E帧（iQ-R系列，含序列号）")]
     public MCFrameType FrameType { get; set; } = MCFrameType.Frame3E;
 
     /// <summary>网络号（仅 3E 帧）。通常 0x00 表示本机网络</summary>
