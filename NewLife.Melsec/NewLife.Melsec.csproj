@@ -28,7 +28,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Melsec</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>物联网;IoT;边缘计算;Edge;新生命团队;NewLife;PLC;Mitsubishi;Melsec;FxLinks;MCProtocol;SLMP;工业自动化;Industrial;Automation;OPC;SCADA;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>升级到 v2.6 的 IoT 架构；提升系统稳定性和性能。Upgraded to IoT v2.6 architecture; improved stability and performance.</PackageReleaseNotes>
+    <PackageReleaseNotes>新增 MC 1E/4E 帧、3E ASCII 模式、串口/UDP 传输、SLMP 3C 帧，以及随机读取、远程启停/密码锁定、监视注册等高级功能；驱动异步化与批量操作；依赖升级。Added MC 1E/4E frames, 3E ASCII mode, serial/UDP transport, SLMP 3C frame, random read, remote run/stop / password lock, monitor registration; async driver / batch operations; dependency upgrades.</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
@@ -43,33 +43,33 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.301">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.400">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.17.2026.701" />
-    <PackageReference Include="NewLife.IoT" Version="3.0.2026.601" />
+    <PackageReference Include="NewLife.Core" Version="11.19.2026.901" />
+    <PackageReference Include="NewLife.IoT" Version="3.1.2026.801" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='netstandard2.1'">
-    <PackageReference Include="System.IO.Ports" Version="10.0.10" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.11" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net6.0'">
-    <PackageReference Include="System.IO.Ports" Version="6.0.0" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.11" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net7.0'">
-    <PackageReference Include="System.IO.Ports" Version="7.0.0" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.11" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net8.0'">
-    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.11" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net9.0'">
-    <PackageReference Include="System.IO.Ports" Version="9.0.18" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.11" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
-    <PackageReference Include="System.IO.Ports" Version="10.0.10" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup>
