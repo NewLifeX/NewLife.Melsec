@@ -144,7 +144,7 @@ public class FxLinks : DisposeBase
         try
         {
             var count = _port.Read(buf, 0, buf.Length);
-            var pk = new Packet(buf, 0, count);
+            IPacket pk = new ArrayPacket(buf, 0, count);
             Log?.Debug("{0}<= {1} ({2})", PortName, pk.ToHex(32, "-"), FxLinksMessage.GetHex(pk.ReadBytes()));
 
             if (span != null) span.Tag += Environment.NewLine + pk.ToHex(64, "-");

@@ -205,13 +205,13 @@ public class FxLinksResponse : IAccessor
 
     /// <summary>消息转数据包</summary>
     /// <returns></returns>
-    public Packet ToPacket()
+    public IPacket ToPacket()
     {
         var ms = new MemoryStream();
         Write(ms, null);
 
         ms.Position = 0;
-        return new Packet(ms);
+        return new ArrayPacket(ms);
     }
     #endregion
 }

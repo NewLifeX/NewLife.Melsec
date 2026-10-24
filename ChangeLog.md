@@ -1,5 +1,25 @@
 # NewLife.Melsec 版本更新记录
 
+## v1.3.2026.1024 (2026-10-24)
+
+### 依赖升级
+- **NewLife.Core 12.0**：升级到 12.0.2026.1024，适配 `Packet` 类型移除，原视图语义改由 `ArrayPacket` 承接
+- **NewLife.IoT 3.2**：升级到 3.2.2026.1024，驱动接口保持兼容
+
+### 工程与构建
+- **解决方案格式**：`NewLife.Melsec.sln` 迁移为新版 `.slnx` 解决方案格式
+- **CI 发布**：统一使用 Ubuntu runner；正式发版同时发布 GitHub Packages 与 NuGet.org，并根据 ChangeLog 自动创建 GitHub Release（附 nupkg/snupkg）
+- **CI 测试**：解决方案编译与 net8.0 单元测试独立执行，测试结果以 trx 归档
+
+### 文档
+- **生态版图与团队**：全部语言版本 README 的生态版图、团队介绍与 NewLife.Core 保持一致
+- **架构设计**：补充 NewLife.Core 12 升级与 `IPacket` 迁移决策
+
+### 兼容性
+- **破坏性变更**：`FxLinksMessage.ToPacket()` / `FxLinksResponse.ToPacket()` 返回类型由已移除的 `Packet` 改为 `IPacket`
+
+---
+
 ## v1.2.2026.0902 (2026-09-02)
 
 ### 新增功能

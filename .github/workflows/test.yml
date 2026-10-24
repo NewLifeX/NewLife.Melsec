@@ -9,7 +9,25 @@ on:
 
 jobs:
   build:
+    name: build solution
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+        cache: true
+        cache-dependency-path: '**/*.csproj'
+    - name: Build
+      run: dotnet build NewLife.Melsec.slnx -c Release
+
+  test:
+    name: test (net8.0)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
     - uses: actions/checkout@v4
@@ -17,12 +35,17 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: |
-          6.x
-          7.x
           8.x
-          9.x
-    - name: Build
-      run: dotnet build -c Release
-
+          10.x
+        cache: true
+        cache-dependency-path: '**/*.csproj'
     - name: Test
-      run: dotnet test -c Release
+      # blame-hang：用例挂起时超时转储，便于事后定位
+      run: dotnet test XUnitTest/XUnitTest.csproj -f net8.0 -c Release --blame-hang-timeout 15m --blame-hang-dump-type mini --logger "trx;LogFileName=test.trx" --results-directory TestResults
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: TestResults/*.trx
+        if-no-files-found: ignore

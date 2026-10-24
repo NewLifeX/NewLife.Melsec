@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".github/workflows/publish-beta.yml" />
+    <File Path=".github/workflows/publish.yml" />
+    <File Path=".github/workflows/test.yml" />
+    <File Path="Readme.MD" />
+  </Folder>
+  <Project Path="NewLife.Melsec/NewLife.Melsec.csproj" />
+  <Project Path="Test/Test.csproj" />
+  <Project Path="Test2/Test2.csproj" />
+  <Project Path="XUnitTest/XUnitTest.csproj" />
+</Solution>

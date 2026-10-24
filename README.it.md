@@ -119,7 +119,7 @@ NewLife è un ecosistema a livelli basato sulle dipendenze: ogni progetto ha ver
 | [GitCandy](https://github.com/NewLifeX/GitCandy) | Sistema self-hosted di gestione del codice sorgente Git. | — |
 | [LuckyClover](https://github.com/NewLifeX/LuckyClover) | Installa automaticamente il runtime .NET corrispondente quando viene avviato da un host meno recente. | — |
 
-> I badge mostrano il pacchetto principale di ciascun progetto; pacchetti tema, di estensione e satelliti sono elencati nelle rispettive pagine NuGet.Gli oltre 30 pacchetti non elencati qui (FTP, LoRa, estensioni Office, driver di protocollo e altri) sono disponibili nell'[organizzazione NewLifeX](https://github.com/NewLifeX) e su [newlifex.com](https://newlifex.com).
+> I badge mostrano il pacchetto principale di ciascun progetto; pacchetti tema, di estensione e satelliti sono elencati nelle rispettive pagine NuGet. Gli oltre 30 pacchetti non elencati qui (FTP, LoRa, estensioni Office, driver di protocollo e altri) sono disponibili nell'[organizzazione NewLifeX](https://github.com/NewLifeX) e su [newlifex.com](https://newlifex.com).
 
 ## Team di sviluppo NewLife
 

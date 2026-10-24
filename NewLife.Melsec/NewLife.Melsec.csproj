@@ -6,7 +6,7 @@
     <Company>新生命开发团队 (NewLife Team)</Company>
     <Copyright>©2002-2026 新生命开发团队 (NewLife Team)</Copyright>
     <NeutralResourcesLanguage>zh-CN</NeutralResourcesLanguage>
-    <VersionPrefix>1.2</VersionPrefix>
+    <VersionPrefix>1.3</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -28,7 +28,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Melsec</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>物联网;IoT;边缘计算;Edge;新生命团队;NewLife;PLC;Mitsubishi;Melsec;FxLinks;MCProtocol;SLMP;工业自动化;Industrial;Automation;OPC;SCADA;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>新增 MC 1E/4E 帧、3E ASCII 模式、串口/UDP 传输、SLMP 3C 帧，以及随机读取、远程启停/密码锁定、监视注册等高级功能；驱动异步化与批量操作；依赖升级。Added MC 1E/4E frames, 3E ASCII mode, serial/UDP transport, SLMP 3C frame, random read, remote run/stop / password lock, monitor registration; async driver / batch operations; dependency upgrades.</PackageReleaseNotes>
+    <PackageReleaseNotes>升级 NewLife.Core 12.0 与 NewLife.IoT 3.2，适配 Packet 类型移除（ToPacket 返回 IPacket）；解决方案迁移为 .slnx；CI 统一 Ubuntu 并同时发布 GitHub Packages、NuGet.org 与 GitHub Release；全部语言版本 README 的生态版图与团队介绍同步 NewLife.Core</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
@@ -50,8 +50,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.19.2026.901" />
-    <PackageReference Include="NewLife.IoT" Version="3.1.2026.801" />
+    <PackageReference Include="NewLife.Core" Version="12.0.2026.1024" />
+    <PackageReference Include="NewLife.IoT" Version="3.2.2026.1024" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='netstandard2.1'">
     <PackageReference Include="System.IO.Ports" Version="10.0.11" />
@@ -74,6 +74,7 @@
 
   <ItemGroup>
     <Content Include="..\Doc\leaf.png" Link="leaf.png" PackagePath="\" />
+    <None Include="..\Readme.MD" Pack="true" PackagePath="README.md" />
   </ItemGroup>
 
 </Project>

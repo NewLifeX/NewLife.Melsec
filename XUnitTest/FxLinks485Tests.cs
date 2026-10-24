@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using NewLife;
+using NewLife.Data;
 using NewLife.Melsec.Protocols;
 using Xunit;
 
